@@ -36,7 +36,7 @@ const expectedPlate = {
     C: 0.12,
     d: math.unit('6.25 ft'),
     C_D0: 0.0352,
-    // e: 0.7054,
+    e: 0.7054,
     // m: 1.7406,
     // b: -0.06338,
 };
@@ -53,6 +53,7 @@ test('Data plate with units', () => {
     expect(plate.C).toEqual(C);
     expect(plate.d).toEqual(expectedPlate.d);
     expect(plate.C_D0).toBeCloseTo(expectedPlate.C_D0, 0.0001);
+    expect(plate.e).toBeCloseTo(expectedPlate.e, 0.0001);
 });
 
 test('British data plate', () => {
@@ -66,6 +67,7 @@ test('British data plate', () => {
     expect(plate.M0).toBeCloseTo(e.M0, 0.1);
     expect(plate.d).toBe(e.d);
     expect(plate.C_D0).toBeCloseTo(expectedPlate.C_D0, 0.0001);
+    expect(plate.e).toBeCloseTo(expectedPlate.e, 0.0001);
 });
 
 // TODO

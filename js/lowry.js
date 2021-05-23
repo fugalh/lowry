@@ -137,7 +137,9 @@ class Lowry {
 
             let glide_ = toBritish(glide);
             // [Bootstrap] eq 5
-            this.C_D0_ = glide_.W * math.sin(gamma) / (rho0_ * glide_.V_Cbg * glide_.V_Cbg * data_.S);
+            this.C_D0 = glide_.W * math.sin(gamma) / (rho0_ * glide_.V_Cbg * glide_.V_Cbg * data_.S);
+            // [Bootstrap] eq 6
+            this.e = 4 * this.C_D0 / (math.pi * this.A * math.pow(math.tan(gamma), 2));
         }
 
         this.d_ = data_.d;
@@ -151,7 +153,8 @@ class Lowry {
             M0: this.M0_,
             C:  this.C,
             d:  this.d_,
-            C_D0: this.C_D0_,
+            C_D0: this.C_D0,
+            e: this.e,
         };
     }
 
