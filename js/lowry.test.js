@@ -1,27 +1,59 @@
 const lowry = require('./lowry')
-const math = lowry.math
-const c = lowry.constants
+const math = lowry.math;
 
-const tau = 2 * math.pi;
+const C = 0.12;
 
-data = {
+const data = {
     S: math.unit('174 ft^2'),
     B: math.unit('35.83 ft'),
     P0: math.unit('160 HP'),
     n0: math.unit('2700 rpm'),
     d: math.unit('6.25 ft'),
     W0: math.unit('2400 lbf'),
-}
+};
 
-test('I know how to program', () => {
-    expect(c.rho0.toNumber('kg/m^3')).toBeCloseTo(1.2214478);
-})
+const expectedPlate = {
+    S: math.unit('174 ft^2'),
+    A: 7.378,
+    M0: math.unit('311.2 ft lbf'),
+    C: 0.12,
+    d: math.unit('6.25 ft'),
+    // C_D0: 0.0352,
+    // e: 0.7054,
+    // m: 1.7406,
+    // b: -0.06338,
+};
 
-test('data plate', () => {
-    plate = lowry.plate(data);
-    expect(plate.S.toNumber('ft^2')).toBe(174);
-    expect(plate.A).toBeCloseTo(7.378,0.001);
-    expect(plate.M0.toNumber('ft lbf')).toBeCloseTo(311.2, 0.1);
-    expect(plate.C).toBe(0.12);
-    expect(plate.d.toNumber('ft')).toBe(6.25);
-})
+test('Data plate with units', () => {
+    let l = new lowry.Lowry(data);
+    const plate = l.plate;
+    for (k in expectedPlate) {
+        expect(Object.keys(plate)).toContain(k);
+    }
+    expect(plate.S).toEqual(expectedPlate.S);
+    expect(plate.A).toBeCloseTo(expectedPlate.A, 0.001);
+    expect(plate.M0.toNumber('ft lbf')).toBeCloseTo(expectedPlate.M0.toNumber('ft lbf'), 0.1);
+    expect(plate.C).toEqual(C);
+    expect(plate.d).toEqual(expectedPlate.d);
+});
+
+test('British data plate', () => {
+    l = new lowry.Lowry(lowry.toBritish(data));
+    const plate = l.britishPlate;
+    const e = lowry.toBritish(expectedPlate);
+    for (k in e) {
+        expect(Object.keys(plate)).toContain(k);
+    }
+    expect(plate.S).toBe(e.S);
+    expect(plate.A).toBeCloseTo(e.A, 0.001);
+    expect(plate.M0).toBeCloseTo(e.M0, 0.1);
+    expect(plate.C).toBe(e.C);
+    expect(plate.d).toBe(e.d);
+});
+
+// TODO
+// glide & climb input representation
+// finish data plate with glide & climb input
+// V speeds
+// curve functions
+// Vega Lite graphs
