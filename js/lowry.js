@@ -18,7 +18,7 @@ math.createUnit('slug', '1 lbf s^2 / ft');
 math.createUnit('HP', '550 ft lbf / sec');
 math.createUnit('rpm', '1 / minute');
 math.createUnit('rps', '1 / second');
-math.createUnit('knot', {definition: '0.514444 m/s', aliases: ['knots', 'kt', 'kts']});
+math.createUnit('knot', {definition: '0.514444 m/s', aliases: ['knots', 'kt', 'kts', 'kcas', 'ktas']});
 
 // constants
 const rho0_ = 0.00237;
@@ -36,6 +36,8 @@ function toBritish(data) {
             'rps', // rotation speed
             'lbf', // weight
             'ft lbf', // torque
+            'ft / sec', // velocity
+            'sec', // time
         ];
         if (math.isUnit(u)) {
             for (const base of bases) {
@@ -129,6 +131,15 @@ class Lowry {
         this.M0_ = data_?.M0 ?? data_.P0 / (2 * math.pi * data_.n0);
         this.C = data_?.C ?? 0.12;
 
+        if ('glide' in data) {
+            let glide = data.glide;
+            let gamma = this.flightAngle(glide.V_Cbg, glide.dh, glide.dt);
+
+            let glide_ = toBritish(glide);
+            // [Bootstrap] eq 5
+            this.C_D0_ = glide_.W * math.sin(gamma) / (rho0_ * glide_.V_Cbg * glide_.V_Cbg * data_.S);
+        }
+
         this.d_ = data_.d;
     }
 
@@ -140,6 +151,7 @@ class Lowry {
             M0: this.M0_,
             C:  this.C,
             d:  this.d_,
+            C_D0: this.C_D0_,
         };
     }
 
@@ -147,10 +159,17 @@ class Lowry {
         return toUnits(this.britishPlate);
     }
 
+    // --- Helpers ---
+
     // Dropoff factor
     phi_(h) {
         // [Bootstrap] eq 2
         return (sigma_(h) - this.C) / (1 - this.C);
+    }
+
+    flightAngle(V, dh, dt) {
+        // [Bootstrap] eq 3
+        return math.unit(math.asin(math.divide(dh, math.multiply(V, dt))), 'radians').to('deg');
     }
 }
 
