@@ -96,7 +96,7 @@ function toUnits(data_) {
 // Calculate atmospheric density given height (ft)
 function rho_s_(h) {
     // [PoLA] eq 1.7
-    return rho0_ * (1 - toBritish(h) / 145457)^4.25635
+    return rho0_ *  math.pow((1 - toBritish(h) / 145457), 4.25635);
 }
 
 // Relative atmospheric density given height (ft)
@@ -109,10 +109,10 @@ function sigma_(h) {
 function tas_(V_C, h) {
     let x_ = toBritish({
         V_C: liftUnit(V_C, 'knots'),
-        rho_: rho_s_(h),
+        rho: rho_s_(h),
     });
     // [Bootstrap] eq 4
-    return x_.V_C / sqrt(x_.rho_ / rho0_);
+    return x_.V_C / math.sqrt(x_.rho / rho0_);
 }
 
 class Lowry {
@@ -131,15 +131,30 @@ class Lowry {
         this.M0_ = data_?.M0 ?? data_.P0 / (2 * math.pi * data_.n0);
         this.C = data_?.C ?? 0.12;
 
-        if ('glide' in data) {
-            let glide = data.glide;
-            let gamma = this.flightAngle(glide.V_Cbg, glide.dh, glide.dt);
-
-            let glide_ = toBritish(glide);
+        if ('drag' in data) {
+            let drag = data.drag;
+            let gamma = this.flightAngle(drag.V_Cbg, drag.dh, drag.dt);
+            let V_Cbg2 = math.pow(toBritish(drag.V_Cbg), 2);
             // [Bootstrap] eq 5
-            this.C_D0 = glide_.W * math.sin(gamma) / (rho0_ * glide_.V_Cbg * glide_.V_Cbg * data_.S);
+            this.C_D0 = toBritish(drag.W) * math.sin(gamma) / (rho0_ * V_Cbg2 * data_.S);
             // [Bootstrap] eq 6
             this.e = 4 * this.C_D0 / (math.pi * this.A * math.pow(math.tan(gamma), 2));
+        }
+        if ('thrust' in data) {
+            let thrust = data.thrust;
+            let W2 = math.pow(toBritish(thrust.W), 2);
+            let rho_ = rho_s_(thrust.h);
+            let rho2_ = math.pow(rho_, 2);
+            let d2 = math.pow(data_.d, 2);
+            let Vx = tas_(thrust.V_Cx, thrust.h);
+            let Vx4 = math.pow(Vx, 4);
+
+            // [Bootstrap] eq 8
+            this.b = (data_.S * this.C_D0 / (2 * d2)) - 2 * W2 / (rho2_ * d2 * data_.S * math.pi * this.e * this.A * Vx4);
+
+            let Vm2 = math.pow(tas_(thrust.V_Cm, thrust.h), 2);
+            // [Bootstrap] eq 9, but substituting M0 for P0/2πn0
+            this.m = (data_.d * W2 / (this.M0_ * math.pi * this.phi_(thrust.h) * rho_ * data_.S * math.pi * this.e * this.A)) * (1/Vm2 + Vm2/Vx4);
         }
 
         this.d_ = data_.d;
@@ -155,6 +170,8 @@ class Lowry {
             d:  this.d_,
             C_D0: this.C_D0,
             e: this.e,
+            b: this.b,
+            m: this.m,
         };
     }
 

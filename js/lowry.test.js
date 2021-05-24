@@ -10,21 +10,17 @@ const data = {
     n0: math.unit('2700 rpm'),
     d: math.unit('6.25 ft'),
     W0: math.unit('2400 lbf'),
-    glide: {
+    drag: {
         W: math.unit('2200 lbf'),
         h: math.unit('5000 ft'), // pressure altitude
         dh: math.unit('200 ft'),
         V_Cbg: math.unit('70 kcas'),
         dt: math.unit('17.0 sec'),
     },
-    climb: {
+    thrust: {
         W: math.unit('2200 lbf'),
         h: math.unit('5000 ft'), // pressure altitude
         V_Cx: math.unit('60.5 kcas'),
-    },
-    level: {
-        W: math.unit('2200 lbf'),
-        h: math.unit('5000 ft'), // pressure altitude
         V_Cm: math.unit('105 kcas'),
     },
 };
@@ -37,8 +33,8 @@ const expectedPlate = {
     d: math.unit('6.25 ft'),
     C_D0: 0.0352,
     e: 0.7054,
-    // m: 1.7406,
-    // b: -0.06338,
+    m: 1.7406,
+    b: -0.06338,
 };
 
 test('Data plate with units', () => {
@@ -54,6 +50,8 @@ test('Data plate with units', () => {
     expect(plate.d).toEqual(expectedPlate.d);
     expect(plate.C_D0).toBeCloseTo(expectedPlate.C_D0, 0.0001);
     expect(plate.e).toBeCloseTo(expectedPlate.e, 0.0001);
+    expect(plate.m).toBeCloseTo(expectedPlate.m, 0.0001);
+    expect(plate.b).toBeCloseTo(expectedPlate.b, 0.0001);
 });
 
 test('British data plate', () => {
@@ -68,11 +66,11 @@ test('British data plate', () => {
     expect(plate.d).toBe(e.d);
     expect(plate.C_D0).toBeCloseTo(expectedPlate.C_D0, 0.0001);
     expect(plate.e).toBeCloseTo(expectedPlate.e, 0.0001);
+    expect(plate.m).toBeCloseTo(expectedPlate.m, 0.0001);
+    expect(plate.b).toBeCloseTo(expectedPlate.b, 0.0001);
 });
 
 // TODO
-// glide & climb input representation
-// finish data plate with glide & climb input
 // V speeds
 // curve functions
 // Vega Lite graphs
