@@ -1,5 +1,6 @@
 const lowry = require('./lowry')
 const math = lowry.math;
+let lower = math.lower;
 
 const C = 0.12;
 
@@ -12,14 +13,16 @@ const data = {
     W0: math.unit('2400 lbf'),
     drag: {
         W: math.unit('2200 lbf'),
-        h: math.unit('5000 ft'), // pressure altitude
+        h: math.unit('5000 ft'),
+        T: math.unit('41 degF'),
         dh: math.unit('200 ft'),
         V_Cbg: math.unit('70 kcas'),
         dt: math.unit('17.0 sec'),
     },
     thrust: {
         W: math.unit('2200 lbf'),
-        h: math.unit('5000 ft'), // pressure altitude
+        h: math.unit('5000 ft'),
+        T: math.unit('41 degF'),
         V_Cx: math.unit('60.5 kcas'),
         V_Cm: math.unit('105 kcas'),
     },
@@ -70,7 +73,14 @@ test('British data plate', () => {
     expect(plate.b).toBeCloseTo(expectedPlate.b, 0.0001);
 });
 
+test('helpers', () => {
+    expect(lower(lowry.standardTemperature(36090), 'degC')).toBeCloseTo(-56.5, 0.1);
+});
+
 // TODO
+// oops, it's supposed to be density altitude not pressure altitude, add OAT to input and calc DA.
+// welp, I've decided to redo all the unit stuff and use units throughout and just live with stuff like math.divide et al after all
+// composite numbers
 // V speeds
 // curve functions
 // Vega Lite graphs

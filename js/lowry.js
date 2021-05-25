@@ -20,6 +20,16 @@ math.createUnit('rpm', '1 / minute');
 math.createUnit('rps', '1 / second');
 math.createUnit('knot', {definition: '0.514444 m/s', aliases: ['knots', 'kt', 'kts', 'kcas', 'ktas']});
 
+math.lift = (x, u) => {
+    if (math.isUnit(x)) return x.to(u);
+    return math.unit(x, u);
+}
+
+math.lower = (x, u) => {
+    if (math.isUnit(x)) return x.toNumber(u);
+    return x.to(u);
+}
+
 // constants
 const rho0_ = 0.00237;
 const rho0 = math.unit(rho0_, 'slug / ft^3')
@@ -38,6 +48,7 @@ function toBritish(data) {
             'ft lbf', // torque
             'ft / sec', // velocity
             'sec', // time
+            'degF', // temperature
         ];
         if (math.isUnit(u)) {
             for (const base of bases) {
@@ -82,6 +93,7 @@ function toUnits(data_) {
         n0: 'rps',
         M0: 'ft lbf',
         d: 'ft',
+        T: 'degF',
     }
     for (const [k,u] of Object.entries(units)) {
         if (k in data_) {
@@ -114,6 +126,15 @@ function tas_(V_C, h) {
     // [Bootstrap] eq 4
     return x_.V_C / math.sqrt(x_.rho / rho0_);
 }
+
+
+function standardTemperature(pressureAltitude) {
+    let T0 = math.unit('15 degC');
+    let lapseRate = math.unit(-1.98/1000, 'K/ft');
+    let h = math.lift(pressureAltitude, 'ft');
+    return math.add(T0, math.multiply(h, lapseRate)).to('degF');
+}
+exports.standardTemperature = standardTemperature;
 
 class Lowry {
     // Construct with input data, either implicitly in British engineering units, or using math.unit
