@@ -24,7 +24,7 @@ const data = {
         h: math.unit('5000 ft'),
         T: math.unit('41 degF'),
         V_Cx: math.unit('60.5 kcas'),
-        V_Cm: math.unit('105 kcas'),
+        V_CM: math.unit('105 kcas'),
     },
 };
 
