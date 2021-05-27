@@ -10,29 +10,27 @@ const math = require('mathjs')
 // Aeronautics and Astronautics, Inc., 1999.
 // https://arc.aiaa.org/doi/book/10.2514/4.103704
 
-// conventions:
-// trailing underscore means a raw number implicitly with British engineering units
-
-// custom units
+// custom units and math helpers
 math.createUnit('slug', '1 lbf s^2 / ft');
 math.createUnit('HP', '550 ft lbf / sec');
 math.createUnit('rpm', '1 / minute');
 math.createUnit('rps', '1 / second');
 math.createUnit('knot', {definition: '0.514444 m/s', aliases: ['knots', 'kt', 'kts', 'kcas', 'ktas']});
+math.createUnit('inHg', '3.38639 kPa');
 
 math.lift = (x, u) => {
-    if (math.isUnit(x)) return x.to(u);
-    return math.unit(x, u);
+    return math.isUnit(x) ? x.to(u) : math.unit(x, u);
 }
 
 math.lower = (x, u) => {
-    if (math.isUnit(x)) return x.toNumber(u);
-    return x.to(u);
+    return math.isUnit(x) ? x.toNumber(u) : x;
 }
 
 // constants
-const rho0_ = 0.00237;
-const rho0 = math.unit(rho0_, 'slug / ft^3')
+const T0 = math.unit(15, 'degC');
+const p0 = math.unit(29.92, 'inHg');
+const densityUnit = 'slug / ft^3';
+const rho0 = math.unit(0.00237, densityUnit);
 
 // Convert data with units to implicit British engineering units (raw numbers).
 // Elements which aren't units will be copied untouched.
@@ -41,7 +39,7 @@ function toBritish(data) {
         const bases = [
             'ft', // length
             'ft^2', // area
-            'slug / ft^3', // density
+            densityUnit,
             'ft lbf / sec', // power
             'rps', // rotation speed
             'lbf', // weight
@@ -76,11 +74,6 @@ function toBritish(data) {
     return data_;
 }
 
-// if it's not already a unit, make it one of these
-function liftUnit(x, unit) {
-    return math.isUnit(x) ? x.to(unit) : math.unit(x, unit);
-}
-
 // Convert an object from implicit British engineering units to explicit
 // math.Unit objects (by key). Any elements that are already Units will be left
 // alone, and any unknown keys will be copied untouched.
@@ -97,7 +90,7 @@ function toUnits(data_) {
     }
     for (const [k,u] of Object.entries(units)) {
         if (k in data_) {
-            data[k] = liftUnit(data_[k], u);
+            data[k] = math.lift(data_[k], u);
         }
     }
     return data;
@@ -106,23 +99,25 @@ function toUnits(data_) {
 // --- Helpers ---
 
 // Calculate atmospheric density given height (ft)
-function rho_s_(h) {
+function density(h) {
+    let h_ = math.lower(h, 'ft');
     // [PoLA] eq 1.7
-    return rho0_ *  math.pow((1 - toBritish(h) / 145457), 4.25635);
+    return math.multiply(rho0,  math.pow((1 - h_ / 145457), 4.25635)).to(densityUnit);
 }
 
 // Relative atmospheric density given height (ft)
-function sigma_(h) {
+function relativeDensity(h) {
     // [Bootstrap] pg 25
-    return rho_s_(h) / rho0_;
+    return math.divide(density(h), rho0);
 }
 
 // Calculate true airspeed from calibrated airspeed (knot or Unit) and height (feet)
 function tas_(V_C, h) {
     let x_ = toBritish({
-        V_C: liftUnit(V_C, 'knots'),
-        rho: rho_s_(h),
+        V_C: math.lift(V_C, 'knots'),
+        rho: density(h),
     });
+    let rho0_ = math.lower(rho0, densityUnit);
     // [Bootstrap] eq 4
     return x_.V_C / math.sqrt(x_.rho / rho0_);
 }
@@ -156,6 +151,7 @@ class Lowry {
             let drag = data.drag;
             let gamma = this.flightAngle(drag.V_Cbg, drag.dh, drag.dt);
             let V_Cbg2 = math.pow(toBritish(drag.V_Cbg), 2);
+            let rho0_ = math.lower(rho0, densityUnit);
             // [Bootstrap] eq 5
             this.C_D0 = toBritish(drag.W) * math.sin(gamma) / (rho0_ * V_Cbg2 * data_.S);
             // [Bootstrap] eq 6
@@ -164,7 +160,7 @@ class Lowry {
         if ('thrust' in data) {
             let thrust = data.thrust;
             let W2 = math.pow(toBritish(thrust.W), 2);
-            let rho_ = rho_s_(thrust.h);
+            let rho_ = math.lower(density(thrust.h), densityUnit);
             let rho2_ = math.pow(rho_, 2);
             let d2 = math.pow(data_.d, 2);
             let Vx = tas_(thrust.V_Cx, thrust.h);
@@ -174,8 +170,9 @@ class Lowry {
             this.b = (data_.S * this.C_D0 / (2 * d2)) - 2 * W2 / (rho2_ * d2 * data_.S * math.pi * this.e * this.A * Vx4);
 
             let Vm2 = math.pow(tas_(thrust.V_Cm, thrust.h), 2);
+            let phi = this.dropoffFactor(thrust.h);
             // [Bootstrap] eq 9, but substituting M0 for P0/2πn0
-            this.m = (data_.d * W2 / (this.M0_ * math.pi * this.phi_(thrust.h) * rho_ * data_.S * math.pi * this.e * this.A)) * (1/Vm2 + Vm2/Vx4);
+            this.m = (data_.d * W2 / (this.M0_ * math.pi * phi * rho_ * data_.S * math.pi * this.e * this.A)) * (1/Vm2 + Vm2/Vx4);
         }
 
         this.d_ = data_.d;
@@ -202,10 +199,10 @@ class Lowry {
 
     // --- Helpers ---
 
-    // Dropoff factor
-    phi_(h) {
+    // phi(sigma(h))
+    dropoffFactor(h) {
         // [Bootstrap] eq 2
-        return (sigma_(h) - this.C) / (1 - this.C);
+        return (relativeDensity(h) - this.C) / (1 - this.C);
     }
 
     flightAngle(V, dh, dt) {
