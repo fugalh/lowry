@@ -77,6 +77,52 @@ test('helpers', () => {
     expect(lower(lowry.standardTemperature(36090), 'degC')).toBeCloseTo(-56.5, 0.1);
 });
 
+test('composites are numbers at least', () => {
+    let l = new lowry.Lowry(data);
+    let case1 = l.composites(math.unit('2400 lbf'), math.unit('0 ft'));
+    expect(case1[k]).not.toBeNaN();
+});
+
+test('composite values', () => {
+    let l = new lowry.Lowry(data);
+    // [PoLA] table 7.8
+    let case1 = l.composites(math.unit('2400 lbf'), math.unit('0 ft'));
+    let case2 = l.composites(math.unit('2200 lbf'), math.unit('4000 ft'));
+    let expected = {
+        E: 544.614,
+        F: -0.0052368,
+        G: 0.0076516,
+        H: 1668987,
+        K: -0.0128884,
+        Q: -41270.6,
+        R: -129495394,
+        U: 218123707,
+    };
+    for (k in expected) {
+        expect(case1[k]).toBeCloseTo(expected[k]);
+    }
+
+    expected = {
+        E: 464.7,
+        F: -0.0046508,
+        G: 0.0067952,
+        H: 1579142,
+        K: -0.0114460,
+        Q: -40603.4,
+        R: -137964564,
+        U: 232389286,
+    };
+    for (k in expected) {
+        expect(case2[k]).toBeCloseTo(expected[k]);
+    }
+})
+
+test('Vspeeds', () => {
+    let l = new lowry.Lowry(data);
+    let v = l.Vspeeds(math.unit(1800, 'lbf'), math.unit(8000, 'ft'));
+    expect(v['Vy'].toNumber('kts')).toBeCloseTo(65.9);
+})
+
 // TODO
 // oops, it's supposed to be density altitude not pressure altitude, add OAT to input and calc DA.
 // welp, I've decided to redo all the unit stuff and use units throughout and just live with stuff like math.divide et al after all

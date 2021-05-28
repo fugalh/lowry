@@ -136,11 +136,14 @@ class Lowry {
     constructor(data) {
         let data_ = toBritish(data);
         this.S_ = data_.S;
+        this.W0_ = data_.W0;
 
         // [Bootstrap] pg 25
         this.A = data_?.A ?? data_.B * data_.B / data_.S;
         this.M0_ = data_?.M0 ?? data_.P0 / (2 * math.pi * data_.n0);
         this.C = data_?.C ?? 0.12;
+
+        let rho0_ = math.lower(rho0, densityUnit);
 
         if ('drag' in data) {
             // TODO adapt to the more accurate approach in [PoLA] appendix F (density altitude and tapeline dh)
@@ -148,7 +151,6 @@ class Lowry {
             // [Bootstrap] eq 3
             let gamma_bg = this.flightAngle(tas(drag.V_Cbg, drag.h), drag.dh, drag.dt);
             let V_Cbg2 = math.pow(toBritish(drag.V_Cbg), 2);
-            let rho0_ = math.lower(rho0, densityUnit);
             // [Bootstrap] eq 5
             this.C_D0 = toBritish(drag.W) * math.sin(gamma_bg) / (rho0_ * V_Cbg2 * data_.S);
             // [Bootstrap] eq 6
@@ -174,6 +176,16 @@ class Lowry {
         }
 
         this.d_ = data_.d;
+
+        // composites [Bootstrap] pg 27-28
+        this.E0 = this.m * this.M0_ * 2 * math.pi / this.d_;
+        this.F0 = rho0_ * this.d_ * this.d_ * this.b;
+        this.G0 = rho0_ * this.S_ * this.C_D0 / 2;
+        this.H0 = 2 * this.W0_ * this.W0_ / (rho0_ * this.S_ * math.pi * this.e * this.A);
+        this.K0 = this.F0 - this.G0;
+        this.Q0 = this.E0 / this.K0;
+        this.R0 = this.H0 / this.K0;
+        this.U0 = this.H0 / this.G0;
     }
 
     // return the bootstrap data plate in implicit British engineering units
@@ -193,6 +205,32 @@ class Lowry {
 
     get plate() {
         return toUnits(this.britishPlate);
+    }
+
+    composites(W, h) {
+        // TODO density altitude
+        let phi = this.dropoffFactor(h);
+        let sigma = relativeDensity(h);
+        let WW2 = math.pow(math.lower(W, 'lbf') / this.W0_, 2);
+        let y = {
+            E: phi * this.E0,
+            F: sigma * this.F0,
+            G: sigma * this.G0,
+            H: WW2 * this.H0 / sigma,
+            K: sigma * this.K0,
+            Q: phi * this.Q0 / sigma,
+            R: WW2 * this.R0 / sigma,
+            U: WW2 * this.U0 / sigma,
+        };
+        return y;
+    }
+
+    Vspeeds(W, h) {
+        let c = this.composites(W, h);
+        return {
+            // [PoLA] eq 7.24
+            Vy: math.unit(math.sqrt(-c.Q / 6 + math.sqrt(c.Q * c.Q / 36 - c.R / 3)), 'ft/s'),
+        }
     }
 
     // --- Helpers ---
