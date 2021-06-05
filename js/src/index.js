@@ -1,5 +1,4 @@
-import {vegaEmbed} from 'vega-embed';
-import 'lowry';
+import * as lowry from './lowry'
 const math = lowry.math;
 
 let c172_data = {
@@ -39,10 +38,12 @@ let data = range(0, 20000, 20000/100).map((h) => {
     return {
         ft: h,
         Vy: v['Vy'].toNumber('ktas'),
+        Vx: v['Vx'].toNumber('ktas'),
     };
 });
 
-vegaEmbed('#Vy', {
+import embed from 'vega-embed'
+embed('#Vy', {
     "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
     "description": "Vy over altitude",
     "data": {
@@ -50,7 +51,36 @@ vegaEmbed('#Vy', {
     },
     "mark": "line",
     "encoding": {
-        "x": { "field": "ft", "type": "quantitative" },
-        "y": { "field": "Vy", "type": "quantitative", scale: {zero:false} }
+        "x": { "field": "Vy", "type": "quantitative", scale: {zero:false} },
+        "y": { "field": "ft", "type": "quantitative" }
+    }
+});
+
+embed('#Vx', {
+    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+    "description": "Vx over altitude",
+    "data": {
+        values: data
+    },
+    "mark": "line",
+    "encoding": {
+        "x": { "field": "Vx", "type": "quantitative", scale: {zero:false} },
+        "y": { "field": "ft", "type": "quantitative" }
+    }
+});
+
+embed('#Vxy', {
+    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+    "description": "Vx and Vy over altitude",
+    "data": {
+        values: data,
+        as: 'ktas'
+    },
+    transform: [{fold: ["Vy", "Vx"]}],
+    "mark": "line",
+    "encoding": {
+        "x": { "field": "value", "type": "quantitative", scale: {zero:false} },
+        "y": { "field": "ft", "type": "quantitative" },
+        color: {field: 'key', type: 'nominal'}
     }
 });

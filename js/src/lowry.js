@@ -230,6 +230,7 @@ class Lowry {
         return {
             // [PoLA] eq 7.24
             Vy: math.unit(math.sqrt(-c.Q / 6 + math.sqrt(c.Q * c.Q / 36 - c.R / 3)), 'ft/s'),
+            Vx: math.unit(math.pow(-c.R, 0.25), 'ft/s'),
         }
     }
 

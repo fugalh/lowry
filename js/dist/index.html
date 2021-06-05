@@ -3,28 +3,16 @@
 
 <head>
     <title>Bootstrap</title>
-    <script src="https://cdn.jsdelivr.net/npm/vega@5.20.2/build/vega.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/vega@5.20.2/build/vega.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.1.0/build/vega-lite.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6/build/vega-embed.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6/build/vega-embed.js"></script> -->
+    <script type="module" src="lowry-example.js"></script>
 </head>
 
 <body>
+    <div id="Vx"></div>
     <div id="Vy"></div>
-    <script type="module">
-        import {data} from './main';
-        vegaEmbed('#Vy', {
-            "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-            "description": "Vy over altitude",
-            "data": {
-                values: data
-            },
-            "mark": "line",
-            "encoding": {
-                "x": { "field": "ft", "type": "quantitative" },
-                "y": { "field": "Vy", "type": "quantitative", scale: {zero:false} }
-            }
-        });
-    </script>
+    <div id="Vxy"></div>
 </body>
 
 </html>

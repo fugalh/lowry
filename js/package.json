@@ -1,11 +1,23 @@
 {
   "dependencies": {
-    "mathjs": "^9.4.0"
+    "mathjs": "^9.4.0",
+    "vega": "^5.20.2",
+    "vega-embed": "^6.18.2",
+    "vega-lite": "^5.1.0"
   },
   "devDependencies": {
-    "jest": "^26.6.3"
+    "http-server": "^0.12.3",
+    "jest": "^26.6.3",
+    "webpack": "^5.38.1",
+    "webpack-cli": "^4.7.0"
   },
   "scripts": {
     "test": "jest"
-  }
+  },
+  "name": "lowry",
+  "version": "1.0.0",
+  "directories": {
+    "test": "test"
+  },
+  "author": "Hans Fugal"
 }
