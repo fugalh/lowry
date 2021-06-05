@@ -1,4 +1,4 @@
-const lowry = require('./lowry')
+const lowry = require('../src/lowry')
 const math = lowry.math;
 let lower = math.lower;
 

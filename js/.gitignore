@@ -1,1 +1,4 @@
 node_modules
+coverage
+dist/main.js
+dist/main.js.LICENSE.txt
