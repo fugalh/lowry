@@ -9,6 +9,7 @@ const data = {
     B: math.unit('35.83 ft'),
     P0: math.unit('160 HP'),
     n0: math.unit('2700 rpm'),
+    // C: 0.12,
     d: math.unit('6.25 ft'),
     W0: math.unit('2400 lbf'),
     drag: {
@@ -28,16 +29,17 @@ const data = {
     },
 };
 
+// [PoLA] table 7.6
 const expectedPlate = {
     S: math.unit('174 ft^2'),
     A: 7.378,
     M0: math.unit('311.2 ft lbf'),
     C: 0.12,
     d: math.unit('6.25 ft'),
-    C_D0: 0.0352,
-    e: 0.7054,
-    m: 1.7406,
-    b: -0.06338,
+    C_D0: 0.037,
+    e: 0.72,
+    m: 1.70,
+    b: -0.0564,
 };
 
 test('Data plate with units', () => {
@@ -47,30 +49,31 @@ test('Data plate with units', () => {
         expect(Object.keys(plate)).toContain(k);
     }
     expect(plate.S).toEqual(expectedPlate.S);
-    expect(plate.A).toBeCloseTo(expectedPlate.A, 0.001);
-    expect(plate.M0.toNumber('ft lbf')).toBeCloseTo(expectedPlate.M0.toNumber('ft lbf'), 0.1);
-    expect(plate.C).toEqual(C);
+    expect(plate.A).toBeCloseTo(expectedPlate.A, 1);
+    expect(plate.M0.toNumber('ft lbf')).toBeCloseTo(expectedPlate.M0.toNumber('ft lbf'), 1);
+    expect(plate.C).toEqual(expectedPlate.C);
     expect(plate.d).toEqual(expectedPlate.d);
-    expect(plate.C_D0).toBeCloseTo(expectedPlate.C_D0, 0.0001);
-    expect(plate.e).toBeCloseTo(expectedPlate.e, 0.0001);
-    expect(plate.m).toBeCloseTo(expectedPlate.m, 0.0001);
-    expect(plate.b).toBeCloseTo(expectedPlate.b, 0.0001);
+    expect(plate.C_D0).toBeCloseTo(expectedPlate.C_D0, 3);
+    expect(plate.e).toBeCloseTo(expectedPlate.e, 2);
+    expect(plate.m).toBeCloseTo(expectedPlate.m, 2);
+    expect(plate.b).toBeCloseTo(expectedPlate.b, 4);
 });
 
 test('British data plate', () => {
     l = new lowry.Lowry(lowry.toBritish(data));
     const plate = l.britishPlate;
+    console.log(plate);
     const e = lowry.toBritish(expectedPlate);
     for (k in e) {
         expect(Object.keys(plate)).toContain(k);
     }
     expect(plate.S).toBe(e.S);
-    expect(plate.M0).toBeCloseTo(e.M0, 0.1);
+    expect(plate.M0).toBeCloseTo(e.M0, 1);
     expect(plate.d).toBe(e.d);
-    expect(plate.C_D0).toBeCloseTo(expectedPlate.C_D0, 0.0001);
-    expect(plate.e).toBeCloseTo(expectedPlate.e, 0.0001);
-    expect(plate.m).toBeCloseTo(expectedPlate.m, 0.0001);
-    expect(plate.b).toBeCloseTo(expectedPlate.b, 0.0001);
+    expect(plate.C_D0).toBeCloseTo(expectedPlate.C_D0, 3);
+    expect(plate.e).toBeCloseTo(expectedPlate.e, 2);
+    expect(plate.m).toBeCloseTo(expectedPlate.m, 2);
+    expect(plate.b).toBeCloseTo(expectedPlate.b, 4);
 });
 
 test('helpers', () => {
@@ -83,13 +86,16 @@ test('composites are numbers at least', () => {
     expect(case1[k]).not.toBeNaN();
 });
 
+// [PoLA] table 7.8
 test('composite values', () => {
     let l = new lowry.Lowry(data);
-    // [PoLA] table 7.8
+
+    expect(lowry.relativeDensity(math.unit('0 ft'))).toBe(1);
+    expect(l.dropoffFactor(math.unit('0 ft'))).toBe(1);
+
     let case1 = l.composites(math.unit('2400 lbf'), math.unit('0 ft'));
-    let case2 = l.composites(math.unit('2200 lbf'), math.unit('4000 ft'));
     let expected = {
-        E: 544.614,
+        E: 531.9,
         F: -0.0052368,
         G: 0.0076516,
         H: 1668987,
@@ -101,7 +107,15 @@ test('composite values', () => {
     for (k in expected) {
         expect(case1[k]).toBeCloseTo(expected[k]);
     }
+});
 
+// [PoLA] table 7.8
+test('composite values at altitude', () => {
+    let l = new lowry.Lowry(data);
+    expect(lowry.relativeDensity(math.unit('4000 ft'))).toBeCloseTo(0.8881);
+    expect(l.dropoffFactor(math.unit('4000 ft'))).toBeCloseTo(0.8737);
+
+    let case2 = l.composites(math.unit('2200 lbf'), math.unit('4000 ft'));
     expected = {
         E: 464.7,
         F: -0.0046508,
@@ -115,12 +129,19 @@ test('composite values', () => {
     for (k in expected) {
         expect(case2[k]).toBeCloseTo(expected[k]);
     }
-})
+});
 
 test('Vspeeds', () => {
     let l = new lowry.Lowry(data);
-    let v = l.Vspeeds(math.unit(1800, 'lbf'), math.unit(8000, 'ft'));
-    expect(v['Vy'].toNumber('kts')).toBeCloseTo(65.9);
+
+    // [PoLA] table 7.4
+    let v1 = l.Vspeeds(math.unit(2400, 'lbf'), math.unit(0, 'ft'));
+    expect(v1['Vy'].toNumber('kts')).toBeCloseTo(75.8, 0.1);
+    expect(v1['Vx'].toNumber('kts')).toBeCloseTo(63.2, 0.1);
+
+    let v2 = l.Vspeeds(math.unit(1800, 'lbf'), math.unit(8000, 'ft'));
+    expect(v2['Vy'].toNumber('kts')).toBeCloseTo(65.9, 0.5);
+    expect(v2['Vx'].toNumber('kts')).toBeCloseTo(64.7, 0.5);
 })
 
 // TODO

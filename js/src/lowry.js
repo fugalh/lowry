@@ -117,6 +117,10 @@ function tas(V_C, h) {
     return math.divide(V_C, math.sqrt(math.divide(density(h), rho0)));
 }
 
+function cas(V, h) {
+   return math.multiply(math.sqrt(relativeDensity(h)), V);
+}
+
 
 function standardTemperature(pressureAltitude) {
     let T0 = math.unit('15 degC');
@@ -229,8 +233,8 @@ class Lowry {
         let c = this.composites(W, h);
         return {
             // [PoLA] eq 7.24
-            Vy: math.unit(math.sqrt(-c.Q / 6 + math.sqrt(c.Q * c.Q / 36 - c.R / 3)), 'ft/s'),
-            Vx: math.unit(math.pow(-c.R, 0.25), 'ft/s'),
+            Vy: math.unit(cas(math.sqrt(-c.Q / 6 + math.sqrt(c.Q * c.Q / 36 - c.R / 3)), h), 'ft/s'),
+            Vx: math.unit(cas(math.pow(-c.R, 0.25), h), 'ft/s'),
         }
     }
 
@@ -253,3 +257,4 @@ exports.math = math
 exports.Lowry = Lowry;
 exports.toBritish = toBritish;
 exports.toUnits = toUnits;
+exports.relativeDensity = relativeDensity;

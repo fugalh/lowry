@@ -37,8 +37,8 @@ let data = range(0, 20000, 20000/100).map((h) => {
     let v = l.Vspeeds(W, math.unit(h, 'ft'));
     return {
         ft: h,
-        Vy: v['Vy'].toNumber('ktas'),
-        Vx: v['Vx'].toNumber('ktas'),
+        Vy: v['Vy'].toNumber('kcas'),
+        Vx: v['Vx'].toNumber('kcas'),
     };
 });
 
@@ -74,7 +74,7 @@ embed('#Vxy', {
     "description": "Vx and Vy over altitude",
     "data": {
         values: data,
-        as: 'ktas'
+        as: 'kcas'
     },
     transform: [{fold: ["Vy", "Vx"]}],
     "mark": "line",
