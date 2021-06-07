@@ -98,29 +98,35 @@ function toUnits(data_) {
 
 // --- Helpers ---
 
-// Calculate atmospheric density given height (ft)
+// Calculate atmospheric density given height (ft) and temperature (degF)
 function density(h) {
     let h_ = math.lower(h, 'ft');
-    // [PoLA] eq 1.7
-    return math.multiply(rho0,  math.pow((1 - h_ / 145457), 4.25635)).to(densityUnit);
+    // [PoLa] eq 1.7
+    return math.multiply(rho0, math.pow(1 - h_ / 145457, 4.25635)).to(densityUnit);
 }
 
-// Relative atmospheric density given height (ft)
-function relativeDensity(h) {
+// Relative atmospheric density given height (ft) and temperature (degF)
+function relativeDensity(h, T) {
+    if (T) {
+        let h_ = math.lower(h, 'ft');
+        let T_ = math.lower(T, 'degF');
+        // [PoLA] eq F.2
+        return (518.7 / (T_ + 459.7)) * (1 - 6.8752e-6 * h_);
+    }
     // [Bootstrap] pg 25
     return math.divide(density(h), rho0);
 }
 
-// Calculate true airspeed from calibrated airspeed (knot or Unit) and height (feet)
-function tas(V_C, h) {
+// Calculate true airspeed from
+// calibrated airspeed (knots), height (feet), and temperature (degF)
+function tas(V_C, h, T) {
     // [Bootstrap] eq 4
-    return math.divide(V_C, math.sqrt(math.divide(density(h), rho0)));
+    return math.divide(math.lift(V_C, 'knots'), math.sqrt(relativeDensity(h, T)));
 }
 
-function cas(V, h) {
-   return math.multiply(math.sqrt(relativeDensity(h)), V);
+function cas(V, h, T) {
+   return math.multiply(math.sqrt(relativeDensity(h, T)), V);
 }
-
 
 function standardTemperature(pressureAltitude) {
     let T0 = math.unit('15 degC');
@@ -128,7 +134,18 @@ function standardTemperature(pressureAltitude) {
     let h = math.lift(pressureAltitude, 'ft');
     return math.add(T0, math.multiply(h, lapseRate)).to('degF');
 }
-exports.standardTemperature = standardTemperature;
+
+// [PoLA] eq F.4
+function tapeline(dh, h, T) {
+    return math.multiply(
+        math.divide(math.lift(T, 'degF'), standardTemperature(h)),
+        math.lift(dh, 'ft')).to('ft');
+}
+
+function flightAngle(V, dh, dt) {
+    // [Bootstrap] eq 3
+    return math.lift(math.asin(math.divide(dh, math.multiply(V, dt))), 'radians').to('deg');
+}
 
 class Lowry {
     // Construct with input data, either implicitly in British engineering units, or using math.unit
@@ -152,14 +169,28 @@ class Lowry {
         if ('drag' in data) {
             // TODO adapt to the more accurate approach in [PoLA] appendix F (density altitude and tapeline dh)
             let drag = data.drag;
+            let sigma = relativeDensity(drag.h, drag.T);
+
             // [Bootstrap] eq 3
-            let gamma_bg = this.flightAngle(tas(drag.V_Cbg, drag.h), drag.dh, drag.dt);
-            let V_Cbg2 = math.pow(toBritish(drag.V_Cbg), 2);
+            let dh = tapeline(drag.dh, drag.h, drag.T);
+            let Vbg = tas(drag.V_Cbg, drag.h, drag.T);
+            let gamma_bg = flightAngle(Vbg, dh, drag.dt);
+
             // [Bootstrap] eq 5
+            let V_Cbg2 = math.pow(toBritish(drag.V_Cbg), 2);
             this.C_D0 = toBritish(drag.W) * math.sin(gamma_bg) / (rho0_ * V_Cbg2 * data_.S);
-            // [Bootstrap] eq 6
+
+            // [PoLA] eq 9.41
+            let W_ = math.lower(drag.W, 'lbf');
+            let Vbg_ = Vbg.toNumber('ft/s');
+            let rho_ = math.multiply(rho0, sigma).toNumber(densityUnit);
+            // I think there's a sign error in the book, it uses -W but that gives the wrong sign.
+            this.C_D0 = W_ * math.sin(gamma_bg) / (rho_ * this.S_ * Vbg_ * Vbg_);
+
+            // [Bootstrap] eq 6, [PoLA] eq 9.42 (wings level)
             this.e = 4 * this.C_D0 / (math.pi * this.A * math.pow(math.tan(gamma_bg), 2));
         }
+
         if ('thrust' in data) {
             // TODO take temperature into account for rho and Vx and Vm
             let thrust = data.thrust;
@@ -245,11 +276,6 @@ class Lowry {
         // [Bootstrap] eq 2
         return (relativeDensity(h) - this.C) / (1 - this.C);
     }
-
-    flightAngle(V_T, dh, dt) {
-        // [Bootstrap] eq 3
-        return math.lift(math.asin(math.divide(dh, math.multiply(V_T, dt))), 'radians').to('deg');
-    }
 }
 
 // our version of math with additional units
@@ -258,3 +284,8 @@ exports.Lowry = Lowry;
 exports.toBritish = toBritish;
 exports.toUnits = toUnits;
 exports.relativeDensity = relativeDensity;
+exports.tas = tas;
+exports.cas = cas;
+exports.standardTemperature = standardTemperature;
+exports.tapeline = tapeline;
+exports.flightAngle = flightAngle;

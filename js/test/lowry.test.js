@@ -1,6 +1,7 @@
 const lowry = require('../src/lowry')
 const math = lowry.math;
-let lower = math.lower;
+const lower = math.lower;
+const Lowry = lowry.Lowry;
 
 const C = 0.12;
 
@@ -17,8 +18,8 @@ const data = {
         h: math.unit('5000 ft'),
         T: math.unit('41 degF'),
         dh: math.unit('200 ft'),
-        V_Cbg: math.unit('70 kcas'),
         dt: math.unit('17.0 sec'),
+        V_Cbg: math.unit('70 kcas'),
     },
     thrust: {
         W: math.unit('2200 lbf'),
@@ -144,10 +145,46 @@ test('Vspeeds', () => {
     expect(v2['Vx'].toNumber('kts')).toBeCloseTo(64.7, 0.5);
 })
 
+// [PoLA] Appendix F: Flight Test for Drag Parameters
+test('Appendix F', () => {
+    let Vcbg = math.unit('70.5 kcas');
+    let dt = math.unit('39.10 s');
+    expect(Vcbg.toNumber('ft/s')).toBeCloseTo(119, 1);
+    let h = math.unit('5750 ft');
+    let T = math.unit('45 degF');
+    expect(lowry.relativeDensity(h, T)).toBeCloseTo(0.9871, 4);
+    let Vbg = lowry.tas(Vcbg, h, T);
+    expect(Vbg.toNumber('ft/s')).toBeCloseTo(119.8, 1);
+    let dh = math.unit('500 ft');
+    let tapeline = lowry.tapeline(dh, h, T);
+    expect(tapeline.toNumber('ft')).
+        toBeCloseTo(506.5, 1);
+    expect(lowry.flightAngle(Vbg, tapeline, dt).toNumber('deg')).toBeCloseTo(6.21);
+
+    let l = new Lowry({
+        S: math.unit('174 ft^2'),
+        A: 7.38,
+        drag: {
+            W: math.unit('2209 lbf'),
+            h: h,
+            T: T,
+            dh: dh,
+            dt: dt,
+            V_Cbg: math.unit('70.5 kcas'),
+        }
+    });
+    let plate = l.britishPlate;
+    // the book saya 0.0408 but it's not that precise in the intermediate values
+    expect(plate.C_D0).toBeCloseTo(0.041, 3.5);
+    expect(plate.e).toBeCloseTo(0.595, 2.5);
+});
+
 // TODO
-// oops, it's supposed to be density altitude not pressure altitude, add OAT to input and calc DA.
+// did density altitude and tapeline as per Appendix F for glide,
+// no make all the rest of the unit tests pass for C_D0 and e
+// and do for climb,
+//
 // welp, I've decided to redo all the unit stuff and use units throughout and just live with stuff like math.divide et al after all
-// composite numbers
 // V speeds
 // curve functions
 // Vega Lite graphs
