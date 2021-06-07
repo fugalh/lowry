@@ -98,53 +98,60 @@ function toUnits(data_) {
 
 // --- Helpers ---
 
-// Calculate atmospheric density given height (ft) and temperature (degF)
-function density(h) {
-    let h_ = math.lower(h, 'ft');
-    // [PoLa] eq 1.7
-    return math.multiply(rho0, math.pow(1 - h_ / 145457, 4.25635)).to(densityUnit);
+function standardTemperature(pressureAltitude) {
+    let T0 = math.unit('15 degC');
+    let lapseRate = math.unit(-0.001981, 'K/ft');
+    let h = math.lift(pressureAltitude, 'ft');
+    return math.add(T0, math.multiply(h, lapseRate)).to('degF');
 }
 
 // Relative atmospheric density given height (ft) and temperature (degF)
 function relativeDensity(h, T) {
-    if (T) {
-        let h_ = math.lower(h, 'ft');
-        let T_ = math.lower(T, 'degF');
-        // [PoLA] eq F.2
-        return (518.7 / (T_ + 459.7)) * (1 - 6.8752e-6 * h_);
+    if (!T) {
+        T = standardTemperature(h);
     }
-    // [Bootstrap] pg 25
-    return math.divide(density(h), rho0);
+    let h_ = math.lower(h, 'ft');
+    let T_ = math.lower(T, 'degF');
+    // [PoLA] eq F.2
+    return (518.7 / (T_ + 459.7)) * (1 - 6.8752e-6 * h_);
+}
+
+// Calculate atmospheric density given height (ft) and temperature (degF)
+function density(h, T) {
+    return math.multiply(rho0, relativeDensity(h, T));
 }
 
 // Calculate true airspeed from
 // calibrated airspeed (knots), height (feet), and temperature (degF)
 function tas(V_C, h, T) {
     // [Bootstrap] eq 4
-    return math.divide(math.lift(V_C, 'knots'), math.sqrt(relativeDensity(h, T)));
+    return math.divide(
+        math.lift(V_C, 'knots'),
+        math.sqrt(relativeDensity(h, T)));
 }
 
 function cas(V, h, T) {
-   return math.multiply(math.sqrt(relativeDensity(h, T)), V);
-}
-
-function standardTemperature(pressureAltitude) {
-    let T0 = math.unit('15 degC');
-    let lapseRate = math.unit(-1.98/1000, 'K/ft');
-    let h = math.lift(pressureAltitude, 'ft');
-    return math.add(T0, math.multiply(h, lapseRate)).to('degF');
+   return math.multiply(V, math.sqrt(relativeDensity(h, T)));
 }
 
 // [PoLA] eq F.4
 function tapeline(dh, h, T) {
+    if (!T) {
+        T = standardTemperature(h);
+    }
     return math.multiply(
-        math.divide(math.lift(T, 'degF'), standardTemperature(h)),
+        math.divide(
+            math.lift(T, 'degF'),
+            standardTemperature(h)),
         math.lift(dh, 'ft')).to('ft');
 }
 
+// expects true airspeed, tapeline dh
 function flightAngle(V, dh, dt) {
     // [Bootstrap] eq 3
-    return math.lift(math.asin(math.divide(dh, math.multiply(V, dt))), 'radians').to('deg');
+    return math.lift(
+        math.asin(math.divide(dh, math.multiply(V, dt))),
+        'radians').to('deg');
 }
 
 class Lowry {
