@@ -27,10 +27,12 @@ math.lower = (x, u) => {
 }
 
 // constants
-const T0 = math.unit(15, 'degC');
-const p0 = math.unit(29.92, 'inHg');
+const T0 = math.unit(288.15, 'K');
+const lapseRate = math.unit(0.001981, 'K/ft');
+const p0 = math.unit(29.921, 'inHg');
 const densityUnit = 'slug / ft^3';
 const rho0 = math.unit(0.00237, densityUnit);
+const T0a = math.divide(T0, lapseRate); // T0 / alpha
 
 // Convert data with units to implicit British engineering units (raw numbers).
 // Elements which aren't units will be copied untouched.
@@ -99,21 +101,21 @@ function toUnits(data_) {
 // --- Helpers ---
 
 function standardTemperature(pressureAltitude) {
-    let T0 = math.unit('15 degC');
-    let lapseRate = math.unit(-0.001981, 'K/ft');
     let h = math.lift(pressureAltitude, 'ft');
-    return math.add(T0, math.multiply(h, lapseRate)).to('degF');
+    return math.subtract(T0, math.multiply(h, lapseRate));
 }
 
 // Relative atmospheric density given height (ft) and temperature (degF)
 function relativeDensity(h, T) {
-    if (!T) {
-        T = standardTemperature(h);
-    }
     let h_ = math.lower(h, 'ft');
-    let T_ = math.lower(T, 'degF');
-    // [PoLA] eq F.2
-    return (518.7 / (T_ + 459.7)) * (1 - 6.8752e-6 * h_);
+    if (T) {
+        let T_ = math.lower(T, 'degF');
+
+        // [PoLA] eq F.2
+        return (518.7 / (T_ + 459.7)) * (1 - 6.8752e-6 * h_);
+    }
+    // [PoLA] eq 1.10
+    return math.pow(1 - h_ / 145457, 4.25635)
 }
 
 // Calculate atmospheric density given height (ft) and temperature (degF)
@@ -165,6 +167,7 @@ class Lowry {
         let data_ = toBritish(data);
         this.S_ = data_.S;
         this.W0_ = data_.W0;
+        this.d_ = data_.d;
 
         // [Bootstrap] pg 25
         this.A = data_?.A ?? data_.B * data_.B / data_.S;
@@ -174,24 +177,20 @@ class Lowry {
         let rho0_ = math.lower(rho0, densityUnit);
 
         if ('drag' in data) {
-            // TODO adapt to the more accurate approach in [PoLA] appendix F (density altitude and tapeline dh)
+            // [PoLA] appendix F
             let drag = data.drag;
             let sigma = relativeDensity(drag.h, drag.T);
 
-            // [Bootstrap] eq 3
             let dh = tapeline(drag.dh, drag.h, drag.T);
             let Vbg = tas(drag.V_Cbg, drag.h, drag.T);
             let gamma_bg = flightAngle(Vbg, dh, drag.dt);
-
-            // [Bootstrap] eq 5
-            let V_Cbg2 = math.pow(toBritish(drag.V_Cbg), 2);
-            this.C_D0 = toBritish(drag.W) * math.sin(gamma_bg) / (rho0_ * V_Cbg2 * data_.S);
 
             // [PoLA] eq 9.41
             let W_ = math.lower(drag.W, 'lbf');
             let Vbg_ = Vbg.toNumber('ft/s');
             let rho_ = math.multiply(rho0, sigma).toNumber(densityUnit);
-            // I think there's a sign error in the book, it uses -W but that gives the wrong sign.
+            // I think there's a sign error in [PoLA] eq 9.41,
+            // it uses -W but that gives the wrong sign.
             this.C_D0 = W_ * math.sin(gamma_bg) / (rho_ * this.S_ * Vbg_ * Vbg_);
 
             // [Bootstrap] eq 6, [PoLA] eq 9.42 (wings level)
@@ -199,25 +198,31 @@ class Lowry {
         }
 
         if ('thrust' in data) {
-            // TODO take temperature into account for rho and Vx and Vm
-            let thrust = data.thrust;
-            let W2 = math.pow(toBritish(thrust.W), 2);
-            let rho_ = math.lower(density(thrust.h), densityUnit);
-            let rho2_ = math.pow(rho_, 2);
-            let d2 = math.pow(data_.d, 2);
-            let Vx = math.lower(tas(thrust.V_Cx, thrust.h), 'ft/s');
-            let Vx4 = math.pow(Vx, 4);
+            const thrust = data.thrust;
+            const W2 = math.pow(toBritish(thrust.W), 2);
+            const rho_ = math.lower(density(thrust.h, thrust.T), densityUnit);
+            const d_ = this.d_;
+            const Vx_ = math.lower(tas(thrust.V_Cx, thrust.h, thrust.T), 'ft/s');
+            const Vx4_ = math.pow(Vx_, 4);
 
-            // [Bootstrap] eq 8
-            this.b = (data_.S * this.C_D0 / (2 * d2)) - 2 * W2 / (rho2_ * d2 * data_.S * math.pi * this.e * this.A * Vx4);
+            // [Bootstrap] eq 8, [PoLA] eq 7.1
+            this.b = (data_.S * this.C_D0 / (2 * d_ * d_)) -
+                2 * W2 / (rho_ * rho_ * d_ * d_ *
+                    data_.S * math.pi * this.e * this.A * Vx4_);
 
-            let V_M2 = math.pow(tas(thrust.V_CM, thrust.h).toNumber('ft/s'), 2);
-            let phi = this.dropoffFactor(thrust.h);
-            // [Bootstrap] eq 9, but substituting M0 for P0/2πn0
-            this.m = (data_.d * W2 / (this.M0_ * math.pi * phi * rho_ * data_.S * math.pi * this.e * this.A)) * (1/V_M2 + V_M2/Vx4);
+            const V_M2_ = math.pow(
+                tas(thrust.V_CM, thrust.h, thrust.T).toNumber('ft/s'), 2);
+            const phi = this.dropoffFactor(thrust.h, thrust.T);
+            // [Bootstrap] eq 9, but substituting πM0 = P0/2n0
+            this.m = (
+                    (d_ * W2) /
+                    (math.pi * this.M0_ * phi * rho_ * this.S_ *
+                        math.pi * this.e * this.A)
+                ) * (
+                    (1 / V_M2_) + (V_M2_ / Vx4_)
+                );
         }
 
-        this.d_ = data_.d;
 
         // composites [Bootstrap] pg 27-28
         this.E0 = this.m * this.M0_ * 2 * math.pi / this.d_;
@@ -249,10 +254,9 @@ class Lowry {
         return toUnits(this.britishPlate);
     }
 
-    composites(W, h) {
-        // TODO density altitude
-        let phi = this.dropoffFactor(h);
-        let sigma = relativeDensity(h);
+    composites(W, h, T) {
+        let phi = this.dropoffFactor(h, T);
+        let sigma = relativeDensity(h, T);
         let WW2 = math.pow(math.lower(W, 'lbf') / this.W0_, 2);
         let y = {
             E: phi * this.E0,
@@ -267,8 +271,8 @@ class Lowry {
         return y;
     }
 
-    Vspeeds(W, h) {
-        let c = this.composites(W, h);
+    Vspeeds(W, h, T) {
+        let c = this.composites(W, h, T);
         return {
             // [PoLA] eq 7.24
             Vy: math.unit(cas(math.sqrt(-c.Q / 6 + math.sqrt(c.Q * c.Q / 36 - c.R / 3)), h), 'ft/s'),
@@ -279,9 +283,9 @@ class Lowry {
     // --- Helpers ---
 
     // phi(sigma(h))
-    dropoffFactor(h) {
+    dropoffFactor(h, T) {
         // [Bootstrap] eq 2
-        return (relativeDensity(h) - this.C) / (1 - this.C);
+        return (relativeDensity(h, T) - this.C) / (1 - this.C);
     }
 }
 

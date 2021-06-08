@@ -11,7 +11,6 @@ let c172_data = {
     drag: {
         W: math.unit('2200 lbf'),
         h: math.unit('5000 ft'),
-        T: math.unit('41 degF'),
         dh: math.unit('200 ft'),
         V_Cbg: math.unit('70 kcas'),
         dt: math.unit('17.0 sec'),
@@ -19,7 +18,6 @@ let c172_data = {
     thrust: {
         W: math.unit('2200 lbf'),
         h: math.unit('5000 ft'),
-        T: math.unit('41 degF'),
         V_Cx: math.unit('60.5 kcas'),
         V_CM: math.unit('105 kcas'),
     },
@@ -37,8 +35,8 @@ let data = range(0, 20000, 20000/100).map((h) => {
     let v = l.Vspeeds(W, math.unit(h, 'ft'));
     return {
         ft: h,
-        Vy: v['Vy'].toNumber('kcas'),
-        Vx: v['Vx'].toNumber('kcas'),
+        Vy: v['Vy'].toNumber('ktas'),
+        Vx: v['Vx'].toNumber('ktas'),
     };
 });
 
