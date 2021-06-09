@@ -19,6 +19,7 @@ math.createUnit('knot', {definition: '0.514444 m/s', aliases: ['knots', 'kt', 'k
 math.createUnit('inHg', '3.38639 kPa');
 
 math.lift = (x, u) => {
+    if (!x) return x;
     return math.isUnit(x) ? x.to(u) : math.unit(x, u);
 }
 
@@ -265,8 +266,8 @@ class Lowry {
             H: WW2 * this.H0 / sigma,
             K: sigma * this.K0,
             Q: phi * this.Q0 / sigma,
-            R: WW2 * this.R0 / sigma,
-            U: WW2 * this.U0 / sigma,
+            R: WW2 * this.R0 / (sigma * sigma),
+            U: WW2 * this.U0 / (sigma * sigma),
         };
         return y;
     }
@@ -275,8 +276,8 @@ class Lowry {
         let c = this.composites(W, h, T);
         return {
             // [PoLA] eq 7.24
-            Vy: math.unit(cas(math.sqrt(-c.Q / 6 + math.sqrt(c.Q * c.Q / 36 - c.R / 3)), h), 'ft/s'),
-            Vx: math.unit(cas(math.pow(-c.R, 0.25), h), 'ft/s'),
+            Vy: cas(math.unit(math.sqrt(-c.Q / 6 + math.sqrt(c.Q * c.Q / 36 - c.R / 3)), 'ft/s'), h, T),
+            Vx: cas(math.unit(math.pow(-c.R, 0.25), 'ft/s'), h, T),
         }
     }
 

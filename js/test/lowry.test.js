@@ -55,7 +55,7 @@ test('Data plate', () => {
     // Appendix F test goes carefully through everything (and my numbers agree
     // with Appendix F)
     expect(plate.C_D0).toBeCloseTo(expectedPlate.C_D0, 2);
-    expect(plate.e).toBeCloseTo(expectedPlate.e, 1.5);
+    expect(plate.e).toBeCloseTo(expectedPlate.e, 1);
     expect(plate.m).toBeCloseTo(expectedPlate.m, 1); // precision??
     expect(plate.b).toBeCloseTo(expectedPlate.b, 1.5); // precision??
 });
@@ -112,7 +112,7 @@ test('composite values', () => {
 test('composite values at density altitude', () => {
     let l = new lowry.Lowry(data);
     let case2 = l.composites(math.unit('2200 lbf'), math.unit('4000 ft'));
-console.log(case2)
+
     expect(lowry.relativeDensity(math.unit('4000 ft'))).toBeCloseTo(0.8881);
     expect(l.dropoffFactor(math.unit('4000 ft'))).toBeCloseTo(0.8737);
     expect(case2.E).toBeCloseTo(464.7, -3);
@@ -120,8 +120,8 @@ console.log(case2)
     expect(case2.G).toBeCloseTo(0.0067952, 3);
     expect(case2.H).toBeCloseTo(1579142, -6);
     expect(case2.K).toBeCloseTo(-0.0114460, 3);
-    expect(case2.Q).toBeCloseTo(-40603.4, -4);
-    expect(case2.R).toBeCloseTo(-137964564, -9);
+    expect(case2.Q).toBeCloseTo(-40603.4, -3);
+    expect(case2.R).toBeCloseTo(-137964564, -6);
     expect(case2.U).toBeCloseTo(232389286, -9);
 });
 
@@ -138,11 +138,13 @@ test('Vspeeds', () => {
     expect(v2['Vx'].toNumber('kts')).toBeCloseTo(54.7, -1);
 })
 
+// even better, mock the data plate and check the composite and vspeed calculations with precision
+
 // [PoLA] Appendix F: Flight Test for Drag Parameters
 test('Appendix F', () => {
     let Vcbg = math.unit('70.5 kcas');
     let dt = math.unit('39.10 s');
-    expect(Vcbg.toNumber('ft/s')).toBeCloseTo(119, 1);
+    expect(Vcbg.toNumber('ft/s')).toBeCloseTo(119.0, 1);
     let h = math.unit('5750 ft');
     let T = math.unit('45 degF');
     expect(lowry.relativeDensity(h, T)).toBeCloseTo(0.9871, 4);
@@ -150,9 +152,8 @@ test('Appendix F', () => {
     expect(Vbg.toNumber('ft/s')).toBeCloseTo(119.8, 1);
     let dh = math.unit('500 ft');
     let tapeline = lowry.tapeline(dh, h, T);
-    expect(tapeline.toNumber('ft')).
-        toBeCloseTo(506.5, 1);
-    expect(lowry.flightAngle(Vbg, tapeline, dt).toNumber('deg')).toBeCloseTo(6.21);
+    expect(tapeline.toNumber('ft')).toBeCloseTo(506.5, 1);
+    expect(lowry.flightAngle(Vbg, tapeline, dt).toNumber('deg')).toBeCloseTo(6.21, 2);
 
     let l = new Lowry({
         S: math.unit('174 ft^2'),
@@ -166,10 +167,9 @@ test('Appendix F', () => {
             V_Cbg: math.unit('70.5 kcas'),
         }
     });
-    let plate = l.britishPlate;
-    // the book saya 0.0408 but it's not that precise in the intermediate values
-    expect(plate.C_D0).toBeCloseTo(0.041, 3.5);
-    expect(plate.e).toBeCloseTo(0.595, 2.5);
+    const plate = l.britishPlate;
+    expect(plate.C_D0).toBeCloseTo(0.0408, 3);
+    expect(plate.e).toBeCloseTo(0.595, 2);
 });
 
 // TODO
