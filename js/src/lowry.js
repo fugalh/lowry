@@ -167,7 +167,6 @@ class Lowry {
     constructor(data) {
         let data_ = toBritish(data);
         this.S_ = data_.S;
-        this.W0_ = data_.W0;
         this.d_ = data_.d;
 
         // [Bootstrap] pg 25
@@ -224,16 +223,11 @@ class Lowry {
                 );
         }
 
-
-        // composites [Bootstrap] pg 27-28
-        this.E0 = this.m * this.M0_ * 2 * math.pi / this.d_;
-        this.F0 = rho0_ * this.d_ * this.d_ * this.b;
-        this.G0 = rho0_ * this.S_ * this.C_D0 / 2;
-        this.H0 = 2 * this.W0_ * this.W0_ / (rho0_ * this.S_ * math.pi * this.e * this.A);
-        this.K0 = this.F0 - this.G0;
-        this.Q0 = this.E0 / this.K0;
-        this.R0 = this.H0 / this.K0;
-        this.U0 = this.H0 / this.G0;
+        // mock overrides for testing
+        this.C_D0 = data.C_D0 ?? this.C_D0;
+        this.e = data.e ?? this.e;
+        this.b = data.b ?? this.b;
+        this.m = data.m ?? this.m;
     }
 
     // return the bootstrap data plate in implicit British engineering units
@@ -256,20 +250,33 @@ class Lowry {
     }
 
     composites(W, h, T) {
-        let phi = this.dropoffFactor(h, T);
-        let sigma = relativeDensity(h, T);
-        let WW2 = math.pow(math.lower(W, 'lbf') / this.W0_, 2);
-        let y = {
-            E: phi * this.E0,
-            F: sigma * this.F0,
-            G: sigma * this.G0,
-            H: WW2 * this.H0 / sigma,
-            K: sigma * this.K0,
-            Q: phi * this.Q0 / sigma,
-            R: WW2 * this.R0 / (sigma * sigma),
-            U: WW2 * this.U0 / (sigma * sigma),
+        // We don't worry about W/W0, instead we just calculate the base
+        // composites on the fly. CPU is cheap.
+        const W_ = math.lower(W, 'lbf');
+        const rho0_ = math.lower(rho0, densityUnit);
+        const phi = this.dropoffFactor(h, T);
+        const sigma = relativeDensity(h, T);
+
+        // composites [Bootstrap] pg 27-28
+        const E0 = this.m * this.M0_ * 2 * math.pi / this.d_;
+        const F0 = rho0_ * this.d_ * this.d_ * this.b;
+        const G0 = rho0_ * this.S_ * this.C_D0 / 2;
+        const H0 = 2 * W_ * W_ / (rho0_ * this.S_ * math.pi * this.e * this.A);
+        const K0 = F0 - G0;
+        const Q0 = E0 / K0;
+        const R0 = H0 / K0;
+        const U0 = H0 / G0;
+
+        return {
+            E: phi * E0,
+            F: sigma * F0,
+            G: sigma * G0,
+            H: H0 / sigma,
+            K: sigma * K0,
+            Q: phi * Q0 / sigma,
+            R: R0 / (sigma * sigma),
+            U: U0 / (sigma * sigma),
         };
-        return y;
     }
 
     Vspeeds(W, h, T) {
@@ -295,6 +302,7 @@ exports.math = math
 exports.Lowry = Lowry;
 exports.toBritish = toBritish;
 exports.toUnits = toUnits;
+exports.density = density;
 exports.relativeDensity = relativeDensity;
 exports.tas = tas;
 exports.cas = cas;
