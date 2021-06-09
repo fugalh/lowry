@@ -130,11 +130,11 @@ function tas(V_C, h, T) {
     // [Bootstrap] eq 4
     return math.divide(
         math.lift(V_C, 'knots'),
-        math.sqrt(relativeDensity(h, T)));
+        math.sqrt(relativeDensity(h, T))).to('ktas');
 }
 
 function cas(V, h, T) {
-   return math.multiply(V, math.sqrt(relativeDensity(h, T)));
+   return math.multiply(V, math.sqrt(relativeDensity(h, T))).to('kcas');
 }
 
 // [PoLA] eq F.4
