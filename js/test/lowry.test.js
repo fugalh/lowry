@@ -135,10 +135,16 @@ test('Vspeeds', () => {
     let v1 = l.Vspeeds(math.unit(2400, 'lbf'), math.unit(0, 'ft'));
     expect(v1['Vy'].toNumber('kts')).toBeCloseTo(75.8, 0);
     expect(v1['Vx'].toNumber('kts')).toBeCloseTo(63.2, 0);
+    expect(v1['VM'].toNumber('kts')).toBeCloseTo(115.3, 0);
+    expect(v1['Vbg'].toNumber('kts')).toBeCloseTo(72.0, -1/2);
+    expect(v1['Vmd'].toNumber('kts')).toBeCloseTo(54.7, -1/2);
 
     let v2 = l.Vspeeds(math.unit(1800, 'lbf'), math.unit(8000, 'ft'));
     expect(v2['Vy'].toNumber('kts')).toBeCloseTo(65.9, 0);
     expect(v2['Vx'].toNumber('kts')).toBeCloseTo(54.7, 0);
+    expect(v2['VM'].toNumber('kts')).toBeCloseTo(100.4, 0);
+    expect(v2['Vbg'].toNumber('kts')).toBeCloseTo(62.4, -1/2);
+    expect(v2['Vmd'].toNumber('kts')).toBeCloseTo(47.4, -1/2);
 })
 
 // even better, mock the data plate and check the composite and vspeed calculations with precision
