@@ -40,6 +40,14 @@ const plate71 = {
     b: -0.0564,
 };
 
+function omap(obj, f) {
+    let y = {};
+    for (let k in obj) {
+        y[k] = f(obj[k]);
+    }
+    return y;
+}
+
 test('Data plate', () => {
     let l = new lowry.Lowry(data);
     const plate = l.plate;
@@ -129,25 +137,23 @@ test('composite values at density altitude', () => {
 });
 
 test('Vspeeds', () => {
-    let l = new lowry.Lowry(data);
+    let l = new lowry.Lowry(plate71);
 
     // [PoLA] table 7.4
     let v1 = l.Vspeeds(math.unit(2400, 'lbf'), math.unit(0, 'ft'));
     expect(v1['Vy'].toNumber('kts')).toBeCloseTo(75.8, 0);
     expect(v1['Vx'].toNumber('kts')).toBeCloseTo(63.2, 0);
     expect(v1['VM'].toNumber('kts')).toBeCloseTo(115.3, 0);
-    expect(v1['Vbg'].toNumber('kts')).toBeCloseTo(72.0, -1/2);
-    expect(v1['Vmd'].toNumber('kts')).toBeCloseTo(54.7, -1/2);
+    expect(v1['Vbg'].toNumber('kts')).toBeCloseTo(72.0, 0);
+    expect(v1['Vmd'].toNumber('kts')).toBeCloseTo(54.7, 0);
 
     let v2 = l.Vspeeds(math.unit(1800, 'lbf'), math.unit(8000, 'ft'));
     expect(v2['Vy'].toNumber('kts')).toBeCloseTo(65.9, 0);
     expect(v2['Vx'].toNumber('kts')).toBeCloseTo(54.7, 0);
     expect(v2['VM'].toNumber('kts')).toBeCloseTo(100.4, 0);
-    expect(v2['Vbg'].toNumber('kts')).toBeCloseTo(62.4, -1/2);
-    expect(v2['Vmd'].toNumber('kts')).toBeCloseTo(47.4, -1/2);
+    expect(v2['Vbg'].toNumber('kts')).toBeCloseTo(62.4, 0);
+    expect(v2['Vmd'].toNumber('kts')).toBeCloseTo(47.4, 0);
 })
-
-// even better, mock the data plate and check the composite and vspeed calculations with precision
 
 // [PoLA] Appendix F: Flight Test for Drag Parameters
 test('Appendix F', () => {
@@ -181,11 +187,30 @@ test('Appendix F', () => {
     expect(plate.e).toBeCloseTo(0.5964, 3);
 });
 
-// TODO
-// did density altitude and tapeline as per Appendix F for glide,
-// now do for climb,
-//
-// welp, I've decided to redo all the unit stuff and use units throughout and just live with stuff like math.divide et al after all
-// V speeds
-// curve functions
-// Vega Lite graphs
+test('[PoLA] table 7.5', () => {
+    let l = new lowry.Lowry(plate71);
+    const V = math.unit('75 kcas');
+    let y = l.performance(V, math.unit('2400 lbf'), 0);
+    expect(y.T.toNumber('lbf')).toBeCloseTo(448.0, 1);
+    expect(y.Pav.toNumber('hp')).toBeCloseTo(103.1, 1);
+    expect(y.Dp.toNumber('lbf')).toBeCloseTo(122.6, 1);
+    expect(y.Di.toNumber('lbf')).toBeCloseTo(104.1, 1);
+    expect(y.D.toNumber('lbf')).toBeCloseTo(226.7, 1);
+    expect(y.Pre.toNumber('hp')).toBeCloseTo(52.2, 1);
+    expect(y.Pxs.toNumber('hp')).toBeCloseTo(50.9, 1);
+    expect(y.ROC.toNumber('ft/min')).toBeCloseTo(700.2, 1);
+    expect(y.Txs.toNumber('lbf')).toBeCloseTo(221.3, 1);
+    expect(y.gamma.toNumber('deg')).toBeCloseTo(5.29, 2);
+
+    y = l.performance(V, math.unit('1800 lbf'), 8000);
+    expect(y.T    .toNumber('lbf'))   .toBeCloseTo(318.7, 1);
+    expect(y.Pav  .toNumber('hp'))    .toBeCloseTo(82.7, 1);
+    expect(y.Dp   .toNumber('lbf'))   .toBeCloseTo(122.6, 1);
+    expect(y.Di   .toNumber('lbf'))   .toBeCloseTo(58.6, 1);
+    expect(y.D    .toNumber('lbf'))   .toBeCloseTo(181.2, 1);
+    expect(y.Pre  .toNumber('hp'))    .toBeCloseTo(47.0, 1);
+    expect(y.Pxs  .toNumber('hp'))    .toBeCloseTo(35.7, 1);
+    expect(y.ROC  .toNumber('ft/min')).toBeCloseTo(654.3, 1);
+    expect(y.Txs  .toNumber('lbf'))   .toBeCloseTo(137.5, 1);
+    expect(y.gamma.toNumber('deg'))   .toBeCloseTo(4.38, 2);
+});

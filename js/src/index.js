@@ -82,6 +82,7 @@ embed('#Vxy', {
     "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
     title: `${input.tail} at ${W.toString()}`,
     "description": "Vx and Vy over altitude",
+    width: '400',
     "data": {
         values: data,
         as: 'kcas'
@@ -99,6 +100,7 @@ embed('#Vxy', {
 embed('#VM', {
     "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
     title: `${input.tail} at ${W.toString()}`,
+    width: '400',
     "data": {
         values: data,
         as: 'kcas'
@@ -106,7 +108,7 @@ embed('#VM', {
     transform: [{fold: ["VM_cas", "VM_tas"]}],
     "mark": "line",
     "encoding": {
-        "x": { "field": "value", "type": "quantitative", title: `${speedUnit} (calibrated)`, scale: {zero:false} },
+        "x": { "field": "value", "type": "quantitative", title: `${speedUnit}`, scale: {zero:false} },
         "y": { "field": "ft", "type": "quantitative", title: "Density Altitude (ft)" },
         color: {field: 'key', type: 'nominal'},
         strokeDash: {field: "key", type: "nominal"},
@@ -114,3 +116,4 @@ embed('#VM', {
 });
 
 // TODO write Vbg and Vmd to some text span or something
+// use immutable.js for ranges and object map and just nice immutability generally

@@ -315,6 +315,31 @@ class Lowry {
         };
     }
 
+    performance(V, W, h, T) {
+        const c = this.composites(W, h, T);
+        let y = {};
+        let V2 = math.lower(math.multiply(V, V), 'ft/s');
+        y.T = c.E + c.F * V2;
+
+        // hmm, we need to return units here, really, which means we probably
+        // should be using units in the composites after all too. and probably
+        // should be using units even more thoroughly throughout.
+        // Also I'm thinking about overall structure and wondering if it wouldn't be better to have a more functional approach, even.
+        // inputs -> plate
+        // plate, W, densityAltitude(h, T) -> v speeds
+        // plate, V, W, densityAltitude(h, T) -> performance
+        // and perhaps, rather than doing all the calculations have functions for each output. But perhaps not. Need to mull that one over.
+        // The first is essentially what we have, or not far from it
+
+        // The second and third - do we leave them as methods of plate, or make
+        // them just functions. or make objects for (plate, W, sigma) and
+        // (plate, V, W, sigma) with getters? The composite base cases could be getters on plate.
+
+        // I should write pseudocode for a few graphs and see what feels right.
+
+        return y;
+    }
+
     // --- Helpers ---
 
     // phi(sigma(h))
