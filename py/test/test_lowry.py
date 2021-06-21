@@ -126,14 +126,14 @@ class TestBootstrap:
 
         assert lowry.relativeDensity(h_rho) == approx(1)
         assert lowry.dropoffFactor(h_rho) == approx(1)
-        assert_approx_Q(c['E'], Q_(531.9, 'lbf'), rel=3)
-        assert_approx_Q(c['F'], Q_(-0.00522, 'slug / ft'), rel=3)
-        assert_approx_Q(c['G'], Q_(0.00763, 'slug / ft'), rel=3)
-        assert_approx_Q(c['H'], Q_(1673000, 'ft lbf^2 / slug'), rel=3)
-        assert_approx_Q(c['K'], Q_(-0.012889, 'slug / ft'), rel=3)
-        assert_approx_Q(c['Q'], Q_(-41390, 'ft lbf / slug'), rel=3)
-        assert_approx_Q(c['R'], Q_(-1.294e8, 'ft^2 lbf^2 / slug^2'), rel=3)
-        assert_approx_Q(c['U'], Q_(-2.181e8, 'ft^2 lbf^2 / slug^2'), rel=3)
+        assert_approx_Q(c['E'], Q_(531.9, 'lbf'), rel=1e-3)
+        assert_approx_Q(c['F'], Q_(-0.005221, 'slug / ft'), rel=1e-3)
+        assert_approx_Q(c['G'], Q_(0.007629, 'slug / ft'), rel=1e-3)
+        assert_approx_Q(c['H'], Q_(1673000, 'ft lbf^2 / slug'), rel=1e-3)
+        assert_approx_Q(c['K'], Q_(-0.01285, 'slug / ft'), rel=1e-3)
+        assert_approx_Q(c['Q'], Q_(-41390, 'ft lbf / slug'), rel=1e-3)
+        assert_approx_Q(c['R'], Q_(-1.294e8, 'ft^2 lbf^2 / slug^2'), rel=0.01)
+        assert_approx_Q(c['U'], Q_(2.181e8, 'ft^2 lbf^2 / slug^2'), rel=0.01)
 
     def test_composites_at_altitude(self):
         """ see [PoLA] table 7.3, but hand calculated """
@@ -142,16 +142,16 @@ class TestBootstrap:
         h_rho = Q_('8000 ft')
         c = lowry.composites(plate71, W, h_rho)
 
-        assert lowry.relativeDensity(h_rho) == approx(0.7860, rel=3)
-        assert lowry.dropoffFactor(h_rho) == approx(0.7568, rel=3)
-        assert_approx_Q(c['E'], Q_(402.6, 'lbf'), rel=3)
-        assert_approx_Q(c['F'], Q_(-0.004103, 'slug / ft'), rel=3)
-        assert_approx_Q(c['G'], Q_(0.005997, 'slug / ft'), rel=3)
-        assert_approx_Q(c['H'], Q_(1198000, 'ft lbf^2 / slug'), rel=3)
-        assert_approx_Q(c['K'], Q_(-0.01010, 'slug / ft'), rel=3)
-        assert_approx_Q(c['Q'], Q_(-39850, 'ft lbf / slug'), rel=3)
-        assert_approx_Q(c['R'], Q_(-1.186e8, 'ft^2 lbf^2 / slug^2'), rel=3)
-        assert_approx_Q(c['U'], Q_(-1.998e8, 'ft^2 lbf^2 / slug^2'), rel=3)
+        assert lowry.relativeDensity(h_rho) == approx(0.7860, rel=1e-3)
+        assert lowry.dropoffFactor(h_rho) == approx(0.7568, rel=1e-3)
+        assert_approx_Q(c['E'], Q_(402.6, 'lbf'), rel=1e-3)
+        assert_approx_Q(c['F'], Q_(-0.004103, 'slug / ft'), rel=1e-3)
+        assert_approx_Q(c['G'], Q_(0.005997, 'slug / ft'), rel=1e-3)
+        assert_approx_Q(c['H'], Q_(1198000, 'ft lbf^2 / slug'), rel=1e-3)
+        assert_approx_Q(c['K'], Q_(-0.01010, 'slug / ft'), rel=1e-3)
+        assert_approx_Q(c['Q'], Q_(-39850, 'ft lbf / slug'), rel=1e-3)
+        assert_approx_Q(c['R'], Q_(-1.186e8, 'ft^2 lbf^2 / slug^2'), rel=1e-3)
+        assert_approx_Q(c['U'], Q_(1.998e8, 'ft^2 lbf^2 / slug^2'), rel=1e-3)
 
     def test_table75(self):
         # [PoLA] table 7.5

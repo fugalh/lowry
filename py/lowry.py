@@ -135,18 +135,18 @@ def bootstrap(data):
     return plate
 
 
-def composites(plate, W, h_p, T=None):
+def composites(plate, W, h_rho):
     # We don't worry about W/W0, instead we just calculate the base
     # composites on the fly. CPU is cheap.
-    phi = dropoffFactor(h_p, T, plate['C'])
-    sigma = relativeDensity(h_p, T)
-    rho = density(h_p, T)
+    phi = dropoffFactor(h_rho, C=plate['C'])
+    rho = density(h_rho)
+    sigma = relativeDensity(h_rho)
 
     # composites [Bootstrap] pg 27-28
     # substituting πM0 = P0/2n0
     E0 = plate['m'] * plate['M0'] * 2 * math.pi / plate['d']
     F0 = rho0 * plate['d'] ** 2 * plate['b']
-    G0 = rho * plate['S'] * plate['C_D0'] / 2
+    G0 = rho0 * plate['S'] * plate['C_D0'] / 2
     H0 = 2 * W * W / (rho0 * plate['S'] * math.pi * plate['e'] * plate['A'])
     K0 = F0 - G0
     Q0 = E0 / K0
@@ -182,6 +182,7 @@ def performance(plate, W, h_rho, V = None):
 
     Vbg = c['U'] ** 0.25
     Vmd = (c['U'] / 3) ** 0.25
+    print(c)
 
     return {
         'Vx': cas((-c['R']) ** 0.25, h_rho),

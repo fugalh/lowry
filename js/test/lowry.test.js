@@ -104,6 +104,7 @@ test('composite values', () => {
     let l = new lowry.Lowry(plate71);
     const h = math.unit('0 ft');
     let case1 = l.composites(math.unit('2400 lbf'), h);
+    console.log(case1)
 
     expect(lowry.relativeDensity(h)).toBeCloseTo(1);
     expect(l.dropoffFactor(h)).toBeCloseTo(1);
