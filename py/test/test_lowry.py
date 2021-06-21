@@ -56,6 +56,19 @@ class TestAtmosphere:
         assert_approx_Q(tapeline, Q_(506.5, 'ft'), abs=0.1)
         assert_approx_Q(gamma, Q_(6.21, 'deg'), abs=0.01)
 
+# [PoLA] table 7.1
+plate71 = {
+    'S': Q_('174 ft^2'),
+    'A': 7.38,
+    'M0': Q_('311.2 ft lbf'),
+    'C': 0.12,
+    'd': Q_('6.25 ft'),
+    'C_D0': 0.037,
+    'e': 0.72,
+    'm': 1.70,
+    'b': -0.0564,
+}
+
 class TestBootstrap:
     def test_appendixF(self):
         data = {
@@ -103,3 +116,76 @@ class TestBootstrap:
         # hand calculated, slightly different from the book
         assert plate['C_D0'] == approx(0.04093, rel=1e-3)
         assert plate['e'] == approx(0.5964, rel=1e-3)
+
+    def test_composites0(self):
+        """ see [PoLA] table 7.3, but hand calculated """
+        # mock the precise data plate from table 7.1, to avoid compounding error
+        W = Q_('2400 lbf')
+        h_rho = Q_('0 ft')
+        c = lowry.composites(plate71, W, h_rho)
+
+        assert lowry.relativeDensity(h_rho) == approx(1)
+        assert lowry.dropoffFactor(h_rho) == approx(1)
+        assert_approx_Q(c['E'], Q_(531.9, 'lbf'), rel=3)
+        assert_approx_Q(c['F'], Q_(-0.00522, 'slug / ft'), rel=3)
+        assert_approx_Q(c['G'], Q_(0.00763, 'slug / ft'), rel=3)
+        assert_approx_Q(c['H'], Q_(1673000, 'ft lbf^2 / slug'), rel=3)
+        assert_approx_Q(c['K'], Q_(-0.012889, 'slug / ft'), rel=3)
+        assert_approx_Q(c['Q'], Q_(-41390, 'ft lbf / slug'), rel=3)
+        assert_approx_Q(c['R'], Q_(-1.294e8, 'ft^2 lbf^2 / slug^2'), rel=3)
+        assert_approx_Q(c['U'], Q_(-2.181e8, 'ft^2 lbf^2 / slug^2'), rel=3)
+
+    def test_composites_at_altitude(self):
+        """ see [PoLA] table 7.3, but hand calculated """
+        # mock the precise data plate from table 7.1, to avoid compounding error
+        W = Q_('1800 lbf')
+        h_rho = Q_('8000 ft')
+        c = lowry.composites(plate71, W, h_rho)
+
+        assert lowry.relativeDensity(h_rho) == approx(0.7860, rel=3)
+        assert lowry.dropoffFactor(h_rho) == approx(0.7568, rel=3)
+        assert_approx_Q(c['E'], Q_(402.6, 'lbf'), rel=3)
+        assert_approx_Q(c['F'], Q_(-0.004103, 'slug / ft'), rel=3)
+        assert_approx_Q(c['G'], Q_(0.005997, 'slug / ft'), rel=3)
+        assert_approx_Q(c['H'], Q_(1198000, 'ft lbf^2 / slug'), rel=3)
+        assert_approx_Q(c['K'], Q_(-0.01010, 'slug / ft'), rel=3)
+        assert_approx_Q(c['Q'], Q_(-39850, 'ft lbf / slug'), rel=3)
+        assert_approx_Q(c['R'], Q_(-1.186e8, 'ft^2 lbf^2 / slug^2'), rel=3)
+        assert_approx_Q(c['U'], Q_(-1.998e8, 'ft^2 lbf^2 / slug^2'), rel=3)
+
+    def test_table75(self):
+        # [PoLA] table 7.5
+        V = Q_('75 kts');
+        y = lowry.performance(plate71, Q_('2400 lbf'), Q_('0 ft'), V)
+        # assert_approx_Q(y['T'],     Q_(448.0, 'lbf'       ), abs=0.1)
+        # assert_approx_Q(y['Pav'],   Q_(103.1, 'horsepower'), abs=0.1)
+        # assert_approx_Q(y['Dp'],    Q_(122.6, 'lbf'       ), abs=0.1)
+        # assert_approx_Q(y['Di'],    Q_(104.1, 'lbf'       ), abs=0.1)
+        # assert_approx_Q(y['D'],     Q_(226.7, 'lbf'       ), abs=0.1)
+        # assert_approx_Q(y['Pre'],   Q_(52.2 , 'horsepower'), abs=0.1)
+        # assert_approx_Q(y['Pxs'],   Q_(50.9 , 'horsepower'), abs=0.1)
+        # assert_approx_Q(y['ROC'],   Q_(700.2, 'ft/min'    ), abs=0.1)
+        # assert_approx_Q(y['Txs'],   Q_(221.3, 'lbf'       ), abs=0.1)
+        # assert_approx_Q(y['gamma'], Q_(5.29 , 'deg'       ), abs=0.01)
+        assert_approx_Q(y['Vy'], Q_(75.8, 'kts'), abs=1)
+        assert_approx_Q(y['Vx'], Q_(63.2, 'kts'), abs=1)
+        assert_approx_Q(y['V_M'], Q_(115.3, 'kts'), abs=1)
+        assert_approx_Q(y['Vbg'], Q_(72.0, 'kts'), abs=1)
+        assert_approx_Q(y['Vmd'], Q_(54.7, 'kts'), abs=1)
+
+        y = lowry.performance(plate71, Q_('1800 lbf'), Q_('8000 ft'), V)
+        # assert_approx_Q(y['T'],     Q_(318.7, 'lbf'       ), abs=0.1)
+        # assert_approx_Q(y['Pav'],   Q_(82.7 , 'horsepower'), abs=0.1)
+        # assert_approx_Q(y['Dp'],    Q_(122.6, 'lbf'       ), abs=0.1)
+        # assert_approx_Q(y['Di'],    Q_(58.6 , 'lbf'       ), abs=0.1)
+        # assert_approx_Q(y['D'],     Q_(181.2, 'lbf'       ), abs=0.1)
+        # assert_approx_Q(y['Pre'],   Q_(47.0 , 'horsepower'), abs=0.1)
+        # assert_approx_Q(y['Pxs'],   Q_(35.7 , 'horsepower'), abs=0.1)
+        # assert_approx_Q(y['ROC'],   Q_(654.3, 'ft/min'    ), abs=0.1)
+        # assert_approx_Q(y['Txs'],   Q_(137.5, 'lbf'       ), abs=0.1)
+        # assert_approx_Q(y['gamma'], Q_(4.38 , 'deg'       ), abs=0.01)
+        assert_approx_Q(y['Vy'], Q_(65.9, 'kts'), abs=1)
+        assert_approx_Q(y['Vx'], Q_(54.7, 'kts'), abs=1)
+        assert_approx_Q(y['V_M'], Q_(100.4, 'kts'), abs=1)
+        assert_approx_Q(y['Vbg'], Q_(62.4, 'kts'), abs=1)
+        assert_approx_Q(y['Vmd'], Q_(47.4, 'kts'), abs=1)

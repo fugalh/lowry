@@ -20,6 +20,7 @@
 # Temperature: T
 
 import math
+import numpy
 
 import pint
 ureg = pint.UnitRegistry()
@@ -50,17 +51,20 @@ def relativeDensity(h_p, T=None):
         # [PoLA] eq F.2
         return (518.7 / T.m_as('degR')) * (1 - 6.8752e-6 * h_p)
     # [PoLA] eq 1.10
-    return pow(1 - h_p / 145457, 4.25635)
+    return (1 - h_p / 145457) ** 4.25635
+
+def dropoffFactor(h_p, T=None, C=0.12):
+    return (relativeDensity(h_p, T) - C) / (1 - C)
 
 def density(h_p, T=None):
     """ without T, assumes standard atmosphere """
     return rho0 * relativeDensity(h_p, T)
 
 def tas(VC, h_p, T=None):
-    return VC / math.sqrt(relativeDensity(h_p, T))
+    return (VC / math.sqrt(relativeDensity(h_p, T))).to('knots')
 
 def cas(V, h_p, T=None):
-    return V * math.sqrt(relativeDensity(h_p, T))
+    return (V * math.sqrt(relativeDensity(h_p, T))).to('knots')
 
 # [PoLA] eq F.4
 def tapeline(dh, h_p, T=None):
@@ -131,7 +135,58 @@ def bootstrap(data):
     return plate
 
 
+def composites(plate, W, h_p, T=None):
+    # We don't worry about W/W0, instead we just calculate the base
+    # composites on the fly. CPU is cheap.
+    phi = dropoffFactor(h_p, T, plate['C'])
+    sigma = relativeDensity(h_p, T)
+    rho = density(h_p, T)
+
+    # composites [Bootstrap] pg 27-28
+    # substituting πM0 = P0/2n0
+    E0 = plate['m'] * plate['M0'] * 2 * math.pi / plate['d']
+    F0 = rho0 * plate['d'] ** 2 * plate['b']
+    G0 = rho * plate['S'] * plate['C_D0'] / 2
+    H0 = 2 * W * W / (rho0 * plate['S'] * math.pi * plate['e'] * plate['A'])
+    K0 = F0 - G0
+    Q0 = E0 / K0
+    R0 = H0 / K0
+    U0 = H0 / G0
+
+    return {
+        'E': phi * E0,
+        'F': sigma * F0,
+        'G': sigma * G0,
+        'H': H0 / sigma,
+        'K': sigma * K0,
+        'Q': phi * Q0 / sigma,
+        'R': R0 / (sigma * sigma),
+        'U': U0 / (sigma * sigma),
+    }
+
+
 def performance(plate, W, h_rho, V = None):
     """ Calculate performance data given a bootstrap data plate, weight, density altitude, and optionally true(?) airspeed.
     Airspeed is required to calculate ... """
-    pass
+    c = composites(plate, W, h_rho)
+
+    try:
+        Vy = (-c['Q'] / 6 + (c['Q'] ** 2 / 36 - c['R'] / 3) ** 0.5) ** 0.5
+    except ValueError:
+        pass
+
+    try:
+        V_M = (-c['Q'] / 2 + (c['Q'] ** 2 / 4 + c['R']) ** 0.5) ** 0.5
+    except ValueError:
+        pass
+
+    Vbg = c['U'] ** 0.25
+    Vmd = (c['U'] / 3) ** 0.25
+
+    return {
+        'Vx': cas((-c['R']) ** 0.25, h_rho),
+        'Vy': cas(Vy, h_rho) if Vy else None,
+        'V_M': cas(V_M, h_rho) if V_M else None,
+        'Vbg': cas(Vbg, h_rho),
+        'Vmd': cas(Vmd, h_rho),
+    }
