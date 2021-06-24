@@ -156,7 +156,9 @@ def composites(plate, W, h_rho):
     return {
         'E': phi * E0,
         'F': sigma * F0,
+        'G0': G0,
         'G': sigma * G0,
+        'H0': H0,
         'H': H0 / sigma,
         'K': sigma * K0,
         'Q': phi * Q0 / sigma,
@@ -169,25 +171,48 @@ def performance(plate, W, h_rho, V = None):
     """ Calculate performance data given a bootstrap data plate, weight, density altitude, and optionally true(?) airspeed.
     Airspeed is required to calculate ... """
     c = composites(plate, W, h_rho)
+    sigma = relativeDensity(h_rho)
+    ret = {}
 
-    try:
-        Vy = (-c['Q'] / 6 + (c['Q'] ** 2 / 36 - c['R'] / 3) ** 0.5) ** 0.5
-    except ValueError:
-        pass
+    # [PoLA] eq 7.19
+    ret['V_M'] = (-c['Q'] / 2 + (c['Q'] ** 2 / 4 + c['R']) ** 0.5) ** 0.5
+    # [PoLA] eq 7.21
+    ret['V_m'] = (-c['Q'] / 2 - (c['Q'] ** 2 / 4 + c['R']) ** 0.5) ** 0.5
+    # [PoLA] eq 7.24
+    ret['Vy'] = (-c['Q'] / 6 + (c['Q'] ** 2 / 36 - c['R'] / 3) ** 0.5) ** 0.5
+    # [PoLA] eq 7.39, aka ROC_max
+    ret['ROC_y'] = (c['E'] * ret['Vy'] + c['K'] * ret['Vy'] ** 3 - c['H'] / ret['Vy']) / W
+    # [PoLA] eq 7.27
+    ret['Vx'] = (-c['R']) ** 0.25
+    # [PoLA] eq 7.31
+    ret['Vbg'] = c['U'] ** 0.25
+    # [PoLA] eq 7.33
+    ret['Vmd'] = Vmd = (c['U'] / 3) ** 0.25
 
-    try:
-        V_M = (-c['Q'] / 2 + (c['Q'] ** 2 / 4 + c['R']) ** 0.5) ** 0.5
-    except ValueError:
-        pass
+    # eq 7.44
+    ret['gamma_x'] = numpy.arcsin((c['E'] - 2 * (-c['K'] * c['H']) ** 0.5) / W)
+    # eq 7.48 is weird for units, so plug Vmd into eq 7.46
+    ret['ROC_md'] = (-c['G'] * Vmd ** 3 - c['H'] / Vmd) / W
+    # eq 7.51
+    ret['gamma_bg'] = -numpy.arcsin(2 * (c['G'] * c['H']) ** 0.5 / W)
 
-    Vbg = c['U'] ** 0.25
-    Vmd = (c['U'] / 3) ** 0.25
-    print(c)
+    if V:
+        # [PoLA] eq 7.35
+        ret['T'] = T = c['E'] + c['F'] * V * V
+        # eq 7.37
+        ret['Dp'] = Dp = c['G'] * V * V
+        ret['Di'] = Di = c['H'] / (V * V)
+        ret['D'] = D = Dp + Di
+        # eq 7.39
+        ret['ROC'] = ROC = (c['E'] * V + c['K'] * V ** 3 - c['H'] / V) / W
+        # eq 7.9
+        ret['Pre'] = Pre = D * V
+        # [PoLA] eq 7.14
+        ret['Pav'] = Pav = T * V
+        # eq 7.17
+        ret['Pxs'] = Pxs = Pav - Pre
+        ret['Txs'] = T - D  # pg 192
+        # eq 7.41
+        ret['gamma'] = numpy.arcsin(ROC / V)
 
-    return {
-        'Vx': cas((-c['R']) ** 0.25, h_rho),
-        'Vy': cas(Vy, h_rho) if Vy else None,
-        'V_M': cas(V_M, h_rho) if V_M else None,
-        'Vbg': cas(Vbg, h_rho),
-        'Vmd': cas(Vmd, h_rho),
-    }
+    return ret
