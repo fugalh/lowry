@@ -110,9 +110,10 @@ def bootstrap(data):
         T = thrust['T']
         rho = density(thrust['h_p'], thrust['T'])
         phi = dropoffFactor(h_p, T)
-        d = thrust['d']
+        d = plate['d']
         Vx = tas(thrust['VCx'], h_p, T)
-        V_M = tas(thrust['V_CM'], h_p, T)
+        V_M = tas(thrust['VC_M'], h_p, T)
+        W = thrust['W']
 
         # [Bootstrap] eq 8, [PoLA] eq 7.1
         plate['b'] = plate['S'] * plate['C_D0'] / (2 * d * d) - (
