@@ -1,6 +1,5 @@
 import pytest
 import lowry
-import pint
 
 approx = pytest.approx
 lower = lowry.lower
