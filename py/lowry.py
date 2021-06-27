@@ -67,10 +67,11 @@ def cas(V, h_p, T=None):
     return (V * math.sqrt(relativeDensity(h_p, T))).to('knots')
 
 # [PoLA] eq F.4
-def tapeline(dh, h_p, T=None):
+def tapeline(dh_p, h_p, T=None):
+    """ dh_p is pressure altitude delta, h_p is average pressure altitude """
     if T is None:
-        return dh
-    return (T.to('kelvin') / standardTemperature(h_p).to('kelvin')) * dh
+        return dh_p
+    return (T.to('kelvin') / standardTemperature(h_p).to('kelvin')) * dh_p
 
 # expects true airspeed, tapeline dh
 def flightAngle(V, dh, dt):
@@ -82,9 +83,11 @@ def bootstrap(data):
     """ airframe and flight test data -> bootstrap data plate """
     plate = data  # TODO extract only the canonical?
     if 'A' not in data and 'B' in data and 'S' in data:
-        plate['A'] = data['B'] ** 2 / data['S']
+        plate['A'] = (data['B'] ** 2 / data['S']).to('')
     if 'M0' not in data and 'P0' in data and 'n0' in data:
-        plate['M0'] = data['P0'] / (2 * math.pi * data['n0'])
+        # Q_(2700, 'rpm') == 2 * math.pi * Q_(2700, '1/min')
+        # so we leave out the 2π factor in the denominator
+        plate['M0'] = (data['P0'] / data['n0']).to('ft lbf')
     if 'C' not in data:
         plate['C'] = 0.12
 
@@ -102,6 +105,7 @@ def bootstrap(data):
         # I think there's a sign error; eq 9.41 uses -W but that gives the wrong sign.
         rho = rho0 * sigma
         plate['C_D0'] = drag['W'] * math.sin(gamma_bg) / (rho * plate['S'] * Vbg ** 2)
+        plate['C_D0'].ito('')
         plate['e'] = 4 * plate['C_D0'] / (math.pi * plate['A'] * math.tan(gamma_bg) ** 2)
 
     if 'thrust' in data:
@@ -120,13 +124,14 @@ def bootstrap(data):
             2 * W * W / (rho * rho * d * d * plate['S']
                 * math.pi * plate['e'] * plate['A'] * Vx ** 4)
         )
-
+        plate['b'].ito('')
 
         # [Bootstrap] eq 9, but substituting πM0 = P0/2n0
         plate['m'] = (d * W * W /
             (math.pi * plate['M0'] * phi * rho * plate['S'] *
                 math.pi * plate['e'] * plate['A'])
         ) * (1 / (V_M * V_M) + (V_M * V_M) / (Vx ** 4))
+        plate['m'].ito('')
 
     # mock overrides for testing
     for k in ['C_D0', 'e', 'b', 'm']:
@@ -178,7 +183,7 @@ def performance(plate, W, h_rho, V = None):
     # [PoLA] eq 7.19
     ret['V_M'] = (-c['Q'] / 2 + (c['Q'] ** 2 / 4 + c['R']) ** 0.5) ** 0.5
     # [PoLA] eq 7.21
-    ret['V_m'] = (-c['Q'] / 2 - (c['Q'] ** 2 / 4 + c['R']) ** 0.5) ** 0.5
+    ret['Vm'] = (-c['Q'] / 2 - (c['Q'] ** 2 / 4 + c['R']) ** 0.5) ** 0.5
     # [PoLA] eq 7.24
     ret['Vy'] = (-c['Q'] / 6 + (c['Q'] ** 2 / 36 - c['R'] / 3) ** 0.5) ** 0.5
     # [PoLA] eq 7.39, aka ROC_max
@@ -189,11 +194,15 @@ def performance(plate, W, h_rho, V = None):
     ret['Vbg'] = c['U'] ** 0.25
     # [PoLA] eq 7.33
     ret['Vmd'] = Vmd = (c['U'] / 3) ** 0.25
+    for vspeed in ['V_M', 'Vm', 'Vy', 'Vx', 'Vbg', 'Vmd']:
+        vcspeed = 'VC' + vspeed[1:]
+        ret[vcspeed] = cas(ret[vspeed], h_rho)
 
     # eq 7.44
     ret['gamma_x'] = numpy.arcsin((c['E'] - 2 * (-c['K'] * c['H']) ** 0.5) / W)
     # eq 7.48 is weird for units, so plug Vmd into eq 7.46
     ret['ROC_md'] = (-c['G'] * Vmd ** 3 - c['H'] / Vmd) / W
+    ret['ROS_md'] = ret['ROC_md']
     # eq 7.51
     ret['gamma_bg'] = -numpy.arcsin(2 * (c['G'] * c['H']) ** 0.5 / W)
 
