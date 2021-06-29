@@ -28,6 +28,11 @@ Q_ = ureg.Quantity
 
 # Constants
 rho0 = Q_(0.00237, 'slug / ft^3')
+T0 = Q_(288.15, 'degK')
+R = Q_(53.355, 'ft/rankine')
+g = Q_(9.80665, 'm / s^2')
+lapseRate = Q_(0.001981, 'kelvin/ft')
+p0 = Q_(101325, 'N / m^2')
 
 # Helpers
 def isQuantity(x):
@@ -39,19 +44,26 @@ def lower(x, u):
     return x
 
 # Atmosphere
-def standardTemperature(h_p):
-    T0 = Q_(288.15, 'degK')
-    lapseRate = Q_(0.001981, 'degK/ft')
-    return T0 - h_p * lapseRate
+def standardTemperature(h):
+    if h == Q_(0, 'ft'):
+        return T0
+    return T0 - h * lapseRate
 
-def relativeDensity(h_p, T=None):
+def standardPressure(h):
+    if h == Q_(0, 'ft'):
+        return p0
+    return p0 * (1 - lapseRate * h / T0) ** (1 / (lapseRate * R))
+
+def relativeDensity(h, T=None):
     """ aka σ """
-    h_p = h_p.m_as('ft')
-    if T is not None:
-        # [PoLA] eq F.2
-        return (518.7 / T.m_as('degR')) * (1 - 6.8752e-6 * h_p)
-    # [PoLA] eq 1.10
-    return (1 - h_p / 145457) ** 4.25635
+    if h == Q_(0, 'ft'):
+        return 1
+
+    if T is None:
+        T = standardTemperature(h)
+    p = standardPressure(h)
+    rho = p / (R * g * T.to('kelvin'))
+    return (rho / rho0).to('')
 
 def dropoffFactor(h_p, T=None, C=0.12):
     return (relativeDensity(h_p, T) - C) / (1 - C)
