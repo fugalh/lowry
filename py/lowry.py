@@ -11,12 +11,12 @@
 
 ## Conventions
 # On subscripts and underscores: prioritize visual shape
-# Vy but V_M and h_p
+# Vy and Vm but V_M and h_p
 #
 # VC for calibrated airspeed, V for true
 # e.g. VCy vs Vy, VC_M vs V_M
 #
-# Altitude: h_p for pressure altitude, h_rho for density altitude.
+# Altitude: h_p for pressure altitude, h_rho for density altitude
 # Temperature: T
 
 import math
@@ -27,12 +27,12 @@ ureg = pint.UnitRegistry()
 Q_ = ureg.Quantity
 
 # Constants
-rho0 = Q_(0.00237, 'slug / ft^3')
-T0 = Q_(288.15, 'degK')
-R = Q_(53.355, 'ft/rankine')
 g = Q_(9.80665, 'm / s^2')
+R = Q_(53.355, 'ft/rankine')  # specific gas constant for air
+T0 = Q_(518.7, 'rankine')
+rho0 = Q_(0.00237, 'slug / ft^3')
+p0 = Q_(29.921, 'inHg')
 lapseRate = Q_(0.001981, 'kelvin/ft')
-p0 = Q_(101325, 'N / m^2')
 
 # Helpers
 def isQuantity(x):
@@ -47,30 +47,30 @@ def lower(x, u):
 def standardTemperature(h):
     if h == Q_(0, 'ft'):
         return T0
-    return T0 - h * lapseRate
+    return (T0 - h * lapseRate).to('rankine')
 
 def standardPressure(h):
     if h == Q_(0, 'ft'):
         return p0
-    return p0 * (1 - lapseRate * h / T0) ** (1 / (lapseRate * R))
+    return (p0 * (1 - lapseRate * h / T0) ** (1 / (lapseRate * R))).to('inHg')
 
 def relativeDensity(h, T=None):
     """ aka σ """
-    if h == Q_(0, 'ft'):
+    if h == Q_(0, 'ft') and T is None:
         return 1
-
     if T is None:
         T = standardTemperature(h)
     p = standardPressure(h)
-    rho = p / (R * g * T.to('kelvin'))
+    rho = p / (R * g * T.to('rankine'))
     return (rho / rho0).to('')
-
-def dropoffFactor(h_p, T=None, C=0.12):
-    return (relativeDensity(h_p, T) - C) / (1 - C)
 
 def density(h_p, T=None):
     """ without T, assumes standard atmosphere """
-    return rho0 * relativeDensity(h_p, T)
+    return (rho0 * relativeDensity(h_p, T)).to('slug / ft^3')
+
+# Aviation
+def dropoffFactor(h_p, T=None, C=0.12):
+    return (relativeDensity(h_p, T) - C) / (1 - C)
 
 def tas(VC, h_p, T=None):
     return (VC / math.sqrt(relativeDensity(h_p, T))).to('knots')
@@ -78,15 +78,15 @@ def tas(VC, h_p, T=None):
 def cas(V, h_p, T=None):
     return (V * math.sqrt(relativeDensity(h_p, T))).to('knots')
 
-# [PoLA] eq F.4
 def tapeline(dh_p, h_p, T=None):
     """ dh_p is pressure altitude delta, h_p is average pressure altitude """
     if T is None:
         return dh_p
-    return (T.to('kelvin') / standardTemperature(h_p).to('kelvin')) * dh_p
+    # [PoLA] eq F.4
+    return (T.to('rankine') / standardTemperature(h_p)) * dh_p
 
-# expects true airspeed, tapeline dh
 def flightAngle(V, dh, dt):
+    """ expects true airspeed, tapeline dh """
     # [Bootstrap] eq 3
     return Q_(math.asin(dh / (V * dt)), 'radian').to('degree')
 
@@ -99,7 +99,7 @@ def bootstrap(data):
     if 'M0' not in data and 'P0' in data and 'n0' in data:
         # Q_(2700, 'rpm') == 2 * math.pi * Q_(2700, '1/min')
         # so we leave out the 2π factor in the denominator
-        plate['M0'] = (data['P0'] / data['n0']).to('ft lbf')
+        plate['M0'] = (data['P0'] / data['n0'].to('rpm')).to('ft lbf')
     if 'C' not in data:
         plate['C'] = 0.12
 
