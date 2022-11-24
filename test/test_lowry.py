@@ -1,5 +1,5 @@
 import sys
-sys.path.append("./py")  # this bullshit to support vscode pytest runner
+sys.path.append(".")  # this bullshit to support vscode pytest runner
 
 import pytest
 import lowry
