@@ -1,3 +1,6 @@
+import sys
+sys.path.append("./py")  # this bullshit to support vscode pytest runner
+
 import pytest
 import lowry
 
