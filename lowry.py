@@ -90,7 +90,17 @@ def flightAngle(V, dh, dt):
     # [Bootstrap] eq 3
     return Q_(math.asin(dh / (V * dt)), 'radian').to('degree')
 
+def _memoize(func):
+    cache = {}
+    def wrapper(*args, **kwargs):
+        key = str(args) + str(kwargs)
+        if key not in cache:
+            cache[key] = func(*args, **kwargs)
+        return cache[key]
+    return wrapper
+
 # The Bootstrap Method
+@_memoize
 def bootstrap(data):
     """ airframe and flight test data -> bootstrap data plate """
     plate = data  # TODO extract only the canonical?
@@ -153,6 +163,7 @@ def bootstrap(data):
     return plate
 
 
+@_memoize
 def composites(plate, W, h_rho):
     # We don't worry about W/W0, instead we just calculate the base
     # composites on the fly. CPU is cheap.
@@ -185,9 +196,10 @@ def composites(plate, W, h_rho):
     }
 
 
+@_memoize
 def performance(plate, W, h_rho, V = None):
-    """ Calculate performance data given a bootstrap data plate, weight, density altitude, and optionally true(?) airspeed.
-    Airspeed is required to calculate ... """
+    """ Calculate performance data given a bootstrap data plate, weight, density altitude, and optionally true airspeed.
+    Airspeed is required to calculate thrust, drag, and climb. """
     c = composites(plate, W, h_rho)
     sigma = relativeDensity(h_rho)
     ret = {}
