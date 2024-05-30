@@ -125,6 +125,7 @@ def bootstrap(data):
 
         # [PoLA] eq 9.41
         # I think there's a sign error; eq 9.41 uses -W but that gives the wrong sign.
+        # [Bootstrap] confirms
         rho = rho0 * sigma
         plate['C_D0'] = drag['W'] * math.sin(gamma_bg) / (rho * plate['S'] * Vbg ** 2)
         plate['C_D0'].ito('')
